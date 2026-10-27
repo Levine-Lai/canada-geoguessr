@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ee"><meta name="description" content="加拿大 GeoGuessr 中文学习地图：13 个省与地区、街景 meta、区域地理、练习与错题复习。">
+  <title>北纬 · 加拿大图寻学习</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="data.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到内容</a>
+<aside class="rail">
+  <a class="brand" href="#atlas" aria-label="北纬首页"><span class="brand-mark">北</span><span>北纬<span class="brand-sub">GEO FIELDNOTES</span></span></a>
+  <div class="country-label"><span class="flag">▮</span> 加拿大 <span class="mono">CAN</span></div>
+  <nav aria-label="学习导航">
+    <button data-view="atlas" class="nav-item active"><span>◫</span> 区域图鉴 <span class="nav-count">13</span></button>
+    <button data-view="meta" class="nav-item"><span>⌕</span> Meta 线索 <span class="nav-count" id="meta-count"></span></button>
+    <button data-view="quiz" class="nav-item"><span>◎</span> 巩固练习</button>
+    <button data-view="review" class="nav-item"><span>↺</span> 错题复习 <span class="nav-count" id="wrong-count">0</span></button>
+  </nav>
+  <div class="rail-bottom"><span class="eyebrow">学习进度</span><div class="progress-number"><strong id="progress-value">0</strong><span>/ 13 区域</span></div><div class="progress-track"><div id="progress-bar"></div></div><p>进度保存在当前浏览器</p><button class="text-button" data-view="sources">资料与来源 ↗</button></div>
+</aside>
+<div class="shell"><header class="topbar"><span>学习手册 <span class="crumb">/</span> 加拿大</span><span class="mono top-note">N 56° · W 106°</span></header>
+<main id="main" tabindex="-1"></main>
+<footer><span>北纬 · 加拿大图寻</span><span>内容核对 2026.10.27 <span class="footer-dot">·</span> <button class="text-button" data-view="sources">查看来源</button></span></footer></div>
+<div id="toast" role="status"></div>
+</body></html>

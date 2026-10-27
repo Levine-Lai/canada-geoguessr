@@ -1,10 +1,12 @@
 # 北纬 · 加拿大图寻学习
 
-加拿大 GeoGuessr 中文学习网页。13 个省和地区的交互地图、19 张实拍观察卡、17 条 Meta 线索、12 道判断练习、错题本与本机学习进度。实景模块支持分类筛选、搜索、隐藏地点练习、放大看图和同区域街景入口。
+加拿大 GeoGuessr 中文实景教程。按 10 个省、3 个地区阅读：Google 360°街景、区域地理、Meta 讲解、图文实拍与记忆对照。无测验、答题、评分、隐藏答案或完成门槛。
 
-首页为 13 个省区的独立课程目录。每课包含区域地理、相关 Meta、当地实拍和 2 道专项练习，共 26 道专项题。每区的四节完成情况、最佳成绩和练习轮数独立保存，使用本机存储键 `north-canada-courses-v1`；保留原有全国练习和学习进度。
+每区包含 2 个 Google 街景观察点，共 26 个，选点参考 Plonk It Canada 的公开地图链接。网页使用 Google Maps 的分享嵌入格式载入原站全景，不下载或托管 Google 影像。Google Earth 3D 地形通过同位置链接在原站打开。加载需要能访问 Google；旧全景失效时提供附近街景入口。拍摄日期以 Google 画面为准。
 
-课程直达链接格式为 `#study/BC/geography`、`#study/BC/meta`、`#study/BC/scenes`、`#study/BC/quiz`，将 BC 替换为其他省区缩写即可。
+另保留 19 张带署名的实拍照片、17 条 Meta 线索及全国区域地图。照片讲解直接展示，支持放大与分类检索。Google 街景载入前的背景是本区参考照片，明确标注为参考图，与全景机位不同。
+
+教程直达链接格式为 `#study/BC/panorama`、`#study/BC/geography`、`#study/BC/meta`、`#study/BC/scenes`、`#study/BC/memory`。将 BC 替换为其他省区缩写即可。旧测验链接返回教程；旧本机学习记录不再读取或写入。
 
 无构建依赖。运行 `python -m http.server 4173`，访问 http://localhost:4173。
 

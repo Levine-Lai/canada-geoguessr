@@ -56,17 +56,9 @@ CLUES.push(
 );
 const cluePhotos={stop:'qc-stop',soil:'pei-road',shield:'on-shield',prairie:'sk-road',route:'mb-road',mountain:'ab-mountain'};
 CLUES.forEach(c=>{if(cluePhotos[c.id])c.photoId=cluePhotos[c.id]});
-const QUESTIONS = [
- {q:'看到一块 ARRÊT 停车牌，最合理的下一步是？',options:['直接锁定魁北克','把魁北克列为候选，继续检查语言与地名','排除所有英语省份','直接选择新不伦瑞克'],answer:1,why:'法语停车牌是有价值的线索，但其他法语社区也可能出现。连续的法语信息与地名更可靠。',clue:'stop'},
- {q:'熊形车牌轮廓清楚，但地区文字模糊。应如何判断？',options:['唯一可能是西北地区','唯一可能是努纳武特','保留西北地区与努纳武特，核对文字及影像年代','一定是旅游纪念品'],answer:2,why:'努纳武特在 2025 年重新推出熊形牌，熊形并不唯一指向 NT。',clue:'bear'},
- {q:'红色裸土、缓坡农田与海岛聚落组合，优先考虑？',options:['爱德华王子岛','育空','西北地区','阿尔伯塔北部'],answer:0,why:'PEI 的红土有明确的地质依据，配合农田和海岛景观有参考价值。土色本身仍非唯一证据。',clue:'soil'},
- {q:'路旁裸岩、湖泊和针叶林很多，能直接确定安大略吗？',options:['能，地盾只在安省','不能，地盾跨越多个省和地区','能，魁北克没有针叶林','不能，只可能是 BC'],answer:1,why:'加拿大地盾分布很广，还需读路号、地名和语言。',clue:'shield'},
- {q:'开阔农田与长直格网道路，最适合先缩小到哪组？',options:['NS / PE / NL','YT / NT / NU','AB / SK / MB','BC / NU / QC'],answer:2,why:'这是南部草原常见的景观组合，继续用省级路盾区分。',clue:'prairie'},
- {q:'看到落基山风景，应优先保留哪两个省？',options:['AB 与 BC','ON 与 QC','NB 与 PE','MB 与 NS'],answer:0,why:'落基山跨越 AB 与 BC，不能只凭雪山定 BC。',clue:'mountain'},
- {q:'普通汽车有清晰前车牌，对 BC 与 AB 的判断有何帮助？',options:['可以直接排除 AB','BC 得到一定支持，但要防跨省车辆','能直接定位温哥华','毫无参考价值'],answer:1,why:'BC 普通车通常前后挂牌，AB 通常仅后牌，但旅行车辆与特殊类别都可能影响判断。',clue:'front'},
- {q:'安大略南部与中北部，哪种区分更合理？',options:['南部全是苔原，北部全是农田','南部常见农田城市；中北部常见地盾森林湖泊','南北没有明显区别','只要有湖就一定在北部'],answer:1,why:'同一省内部的地理变化很大，南北自然带比单一省级印象更有用。',clue:'shield'},
- {q:'Saint John 与 St. John’s 分别对应？',options:['都在魁北克','前者 NB，后者 NL','前者 NL，后者 NB','都在新斯科舍'],answer:1,why:'Saint John 位于新不伦瑞克；St. John’s 是纽芬兰与拉布拉多省首府。',clue:'route'},
- {q:'加拿大限速数字旁清楚标出 km/h，能说明什么？',options:['这一定是美国','支持加拿大判断，但还需其他线索','可以直接定位某省','所有北美国家都不用公里制'],answer:1,why:'公里制有助于区分加拿大与美国街景，但不能单独确定省份。',clue:'speed'},
- {q:'BC 的内陆出现干燥草坡，是否矛盾？',options:['矛盾，BC 全省是雨林','不矛盾，海岸与内陆有明显差异','矛盾，只可能是萨省','矛盾，只可能是美国'],answer:1,why:'海岸湿润的印象不能套到整个 BC，内陆谷地可更干燥。',clue:'mountain'},
- {q:'一张无树、植被低矮的街景，能唯一指向努纳武特吗？',options:['能，无树就是 NU','不能，其他北方地区也有类似景观','能，NT 全部是森林','不能，只可能是 PEI'],answer:1,why:'苔原分布跨行政区，需结合地区文字、聚落名和具体覆盖。',clue:'camera'}
-];
+Object.assign(SOURCES,{
+ comprehensive:['Comprehensive Canada · Davis Savage','https://docs.google.com/document/d/15DuGdsvKMqv5O-XiFwhNuczw89jVqg8XycY7brvhjP4/edit'],
+ video:['Geoguessr Deconstructed · Canada','https://www.youtube.com/watch?v=Yq_Vh-1Gc3A'],
+ googleStreet:['Google · 街景操作说明','https://support.google.com/maps/answer/3093484'],
+ googleEarth:['Google Earth · 3D 地形与视角','https://developers.google.com/maps/documentation/earth/navigate-the-globe']
+});

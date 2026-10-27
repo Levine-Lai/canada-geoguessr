@@ -5,7 +5,7 @@
   <meta name="theme-color" content="#f5f4ee"><meta name="description" content="加拿大 GeoGuessr 中文学习地图：13 个省与地区、街景 meta、区域地理、练习与错题复习。">
   <title>北纬 · 加拿大图寻学习</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="data.js" defer></script><script src="app.js" defer></script>
+  <script src="data.js" defer></script><script src="photos.js" defer></script><script src="scenes.js" defer></script><script src="gallery.js" defer></script><script src="app.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">跳到内容</a>
@@ -14,6 +14,7 @@
   <div class="country-label"><span class="flag">▮</span> 加拿大 <span class="mono">CAN</span></div>
   <nav aria-label="学习导航">
     <button data-view="atlas" class="nav-item active"><span>◫</span> 区域图鉴 <span class="nav-count">13</span></button>
+    <button data-view="scenes" class="nav-item"><span>▧</span> 实景观察 <span class="nav-count">19</span></button>
     <button data-view="meta" class="nav-item"><span>⌕</span> Meta 线索 <span class="nav-count" id="meta-count"></span></button>
     <button data-view="quiz" class="nav-item"><span>◎</span> 巩固练习</button>
     <button data-view="review" class="nav-item"><span>↺</span> 错题复习 <span class="nav-count" id="wrong-count">0</span></button>
@@ -24,4 +25,5 @@
 <main id="main" tabindex="-1"></main>
 <footer><span>北纬 · 加拿大图寻</span><span>内容核对 2026.10.27 <span class="footer-dot">·</span> <button class="text-button" data-view="sources">查看来源</button></span></footer></div>
 <div id="toast" role="status"></div>
+<dialog id="photo-dialog" aria-labelledby="photo-title"><div id="photo-dialog-body"></div></dialog>
 </body></html>

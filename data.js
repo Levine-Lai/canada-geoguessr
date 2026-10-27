@@ -45,6 +45,17 @@ const CLUES = [
  {id:'mountain',title:'山地不等于 BC',category:'自然地理',strength:'辅助',regions:['BC','AB','YT'],visual:'mountain',summary:'山形、湿度、植被与路号需要一起使用。',detail:'加拿大西部山地跨省分布。AB 西部也有落基山，YT 也有显著山地。BC 内陆可能干燥，不能把整省记成海岸雨林。',sources:['atlas','ab']},
  {id:'camera',title:'相机与覆盖 Meta',category:'拍摄覆盖',strength:'辅助',regions:[],visual:'camera',summary:'影像年代与覆盖会更新，不用相机代际硬锁省。',detail:'看得到的车身、画质、季节和相机差异可以辅助复盘，但这份手册不把未验证的独家车 meta 当作规则。先用道路、语言和地貌建立判断，再对照进阶社区图例及具体街景日期。',sources:['plonk']}
 ];
+CLUES.push(
+ {id:'bilingual',title:'双语公路牌：读完整名称',category:'语言路牌',strength:'组合',regions:['NB'],visual:'route',photoId:'nb-bilingual',summary:'同一块牌上有英法两种语言，继续寻找可定位的道路名。',detail:'实拍的 Veterans Memorial Highway / Autoroute des anciens combattants 位于 NB。双语本身不是独占线索；完整道路名、城镇与路线才更有定位价值。',sources:['regions']},
+ {id:'destination',title:'路牌上的目的地不等于所在地',category:'语言路牌',strength:'较强',regions:['MB','ON'],visual:'route',photoId:'mb-road',summary:'在曼省公路上，也可能看见通向安省 Kenora 的路牌。',detail:'照片牌面写有 Falcon Lake 125、Kenora 191。把方向、距离和公路体系一起读，避免看到邻省城市就直接把落点放到该省。',sources:['mb']},
+ {id:'stairs',title:'外楼梯与连续街屋',category:'建筑人文',strength:'辅助',regions:['QC'],visual:'camera',photoId:'qc-stairs',summary:'蒙特利尔 Plateau 实拍：看上层入口与外楼梯。',detail:'将楼梯、联排立面、门窗与路边停车分别观察，再找法语街牌与具体地名。建筑风格只帮助建立候选，不能直接代表整省。',sources:['regions']},
+ {id:'grain',title:'谷仓与农业生产设施',category:'建筑人文',strength:'组合',regions:['SK','AB','MB'],visual:'prairie',photoId:'sk-grain',summary:'从生产设施判断土地用途，再结合农田与道路格局。',detail:'示例是 Moose Jaw 附近农场的储粮设施。类似建筑跨省和跨国存在，别把谷仓本身当作萨省独有标志。',sources:['regions']},
+ {id:'woodhouses',title:'彩色房屋与大西洋聚落',category:'建筑人文',strength:'辅助',regions:['NS','NL','NB'],visual:'camera',photoId:'ns-town',summary:'颜色容易记住，但街区尺度、立面与地名更值得读。',detail:'实拍来自 Lunenburg；不同大西洋聚落也可能出现类似彩色建筑。先观察屋顶、外墙和道路坡度，再寻找街名与城镇名。',sources:['ns','regions']},
+ {id:'southfarm',title:'农田并不只在草原三省',category:'自然地理',strength:'辅助',regions:['ON','AB','SK','MB'],visual:'prairie',photoId:'on-farm',summary:'南部安大略的农田可修正“农田＝大草原”的直觉。',detail:'照片中的农田、树带与田间通道说明当地土地使用方式，却不足以唯一定位。把自然带、路网和路牌交叉核对。',sources:['on','regions']},
+ {id:'northroad',title:'北方公路：路面、植被与山体',category:'自然地理',strength:'组合',regions:['YT','NT'],visual:'mountain',photoId:'yt-road',summary:'Dempster Highway 的具体路段，需要继续用地名确认。',detail:'Tombstone 区域实拍同时呈现道路、低矮植被与山地。公路本身跨越 YT 与 NT；认出公路名并不意味着已经确定地区。',sources:['atlas']}
+);
+const cluePhotos={stop:'qc-stop',soil:'pei-road',shield:'on-shield',prairie:'sk-road',route:'mb-road',mountain:'ab-mountain'};
+CLUES.forEach(c=>{if(cluePhotos[c.id])c.photoId=cluePhotos[c.id]});
 const QUESTIONS = [
  {q:'看到一块 ARRÊT 停车牌，最合理的下一步是？',options:['直接锁定魁北克','把魁北克列为候选，继续检查语言与地名','排除所有英语省份','直接选择新不伦瑞克'],answer:1,why:'法语停车牌是有价值的线索，但其他法语社区也可能出现。连续的法语信息与地名更可靠。',clue:'stop'},
  {q:'熊形车牌轮廓清楚，但地区文字模糊。应如何判断？',options:['唯一可能是西北地区','唯一可能是努纳武特','保留西北地区与努纳武特，核对文字及影像年代','一定是旅游纪念品'],answer:2,why:'努纳武特在 2025 年重新推出熊形牌，熊形并不唯一指向 NT。',clue:'bear'},

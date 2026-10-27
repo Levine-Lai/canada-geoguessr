@@ -19,9 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Prepare static website
+        run: |
+          mkdir _site
+          cp index.html styles.css app.js data.js photos.js scenes.js gallery.js CREDITS.md _site/
+          cp -r assets _site/assets
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

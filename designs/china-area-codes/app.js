@@ -3,7 +3,7 @@
   const provinces = window.AREA_PROVINCES, groups = window.AREA_GROUPS;
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const state = {view:'memory',prefix:'all',province:44,query:''};
+  const state = {view:'memory',prefix:'all',province:44,query:'',mapZoom:'country',mapCity:null};
   const rowClass = r => r.code.startsWith('06') ? 'extra' : r.code.length===3 ? 'special' : '';
   const matches = (p,r) => (state.prefix==='all'||r.code.startsWith(state.prefix)) && (!state.query || (p.name+r.code+r.city).includes(state.query));
   const rowsFor = p => p.rows.filter(r=>matches(p,r)).sort((a,b)=>a.code.localeCompare(b.code));
@@ -36,16 +36,18 @@
       const p=provinces.find(p=>p.id===f.id), active=ids.has(f.id), pos=mapOverrides[f.id]||f.center;
       const label=p?p.name:f.name.replace(/省|特别行政区/g,'');
       const subtitle=p?(state.prefix==='06'?'06 + '+p.main:p.main):'';
-      return `<g class="${active||!p?'':'faded'}"><path d="${f.path}" class="province-shape ${state.province===f.id?'selected':''}" style="fill:${p?groupColor(p.main):'var(--neutral)'}" ${p?`role="button" tabindex="0" data-province="${p.id}" aria-label="${esc(p.name)}，${esc(p.pattern)}"`:''}><title>${esc(label)} ${p?esc(p.pattern):'独立编号体系'}</title></path>${label&&f.id!==81&&f.id!==82&&(active||state.prefix==='all')?`${[11,12,31].includes(f.id)?`<line x1="${f.center[0]}" y1="${f.center[1]}" x2="${pos[0]}" y2="${pos[1]}" stroke="var(--muted)" stroke-width=".5"></line>`:''}<text x="${pos[0]}" y="${pos[1]}" class="province-label">${esc(label)}${subtitle?`<tspan x="${pos[0]}" dy="15">${subtitle}</tspan>`:''}</text>`:''}</g>`;
+      return `<g class="${active||!p?'':'faded'}"><path d="${f.path}" class="province-shape ${state.province===f.id?'selected':''}" style="fill:${p?groupColor(p.main):'var(--neutral)'}" ${p?`role="button" tabindex="0" data-province="${p.id}" aria-label="${esc(p.name)}，${esc(p.pattern)}"`:''}><title>${esc(label)} ${p?esc(p.pattern):'独立编号体系'}</title></path>${label&&f.id!==81&&f.id!==82&&(active||state.prefix==='all')?`${[11,12,31].includes(f.id)?`<line x1="${f.center[0]}" y1="${f.center[1]}" x2="${pos[0]}" y2="${pos[1]}" stroke="var(--muted)" stroke-width=".5"></line>`:''}<text x="${pos[0]}" y="${pos[1]}" class="province-label" ${p?`data-province="${p.id}" role="button" tabindex="-1" aria-label="放大${esc(p.name)}"`:''}>${esc(label)}${subtitle?`<tspan x="${pos[0]}" dy="15">${subtitle}</tspan>`:''}</text>`:''}</g>`;
     }).join('');
     const markers=[...extras.map(d=>[...d,'extra']),...specials.map(d=>[...d,'special'])].filter(([id,city,code])=>(state.prefix==='all'||code.startsWith(state.prefix))&&(!state.query||(provinces.find(p=>p.id===id).name+city+code).includes(state.query))).map(([id,city,code,ll,dx,dy,type])=>{
       const [x,y]=project(ll),showLabel=state.prefix!=='all'||state.query;
       return `<g class="marker-group" role="button" tabindex="0" data-province="${id}" aria-label="${city} ${code}"><title>${city} ${code}</title><circle class="map-dot ${type==='special'?'special-dot':''}" cx="${x}" cy="${y}" r="${state.prefix==='06'?4.5:3.5}"></circle>${showLabel?`<text class="marker-label" x="${x+dx}" y="${y+dy}" text-anchor="middle">${code}</text>`:''}</g>`;
     }).join('');
     // Southern islands are shown in a separate inset using the same source geometry.
-    $('#map-holder').innerHTML=`<svg class="china-map" viewBox="0 0 810 530" aria-label="中国电话区号分布地图"><g>${paths}</g>${markers}<g class="south-sea"><rect x="716" y="378" width="78" height="132" rx="2" fill="none" stroke="var(--line)"></rect><path d="${window.AREA_MAP.inset}" fill="var(--neutral)" stroke="var(--muted)" stroke-width=".5"></path><text x="755" y="522" class="province-label" style="font-size:9px">南海诸岛</text></g></svg>`;
+    window.AREA_CITY_MAP.render(state,`<svg class="china-map" viewBox="0 0 810 530" aria-label="中国电话区号分布地图"><g>${paths}</g>${markers}<g class="south-sea"><rect x="716" y="378" width="78" height="132" rx="2" fill="none" stroke="var(--line)"></rect><path d="${window.AREA_MAP.inset}" fill="var(--neutral)" stroke="var(--muted)" stroke-width=".5"></path><text x="755" y="522" class="province-label" style="font-size:9px">南海诸岛</text></g></svg>`);
   }
   function renderDetail(){
+    if(state.view==='map'&&state.mapZoom==='province'){window.AREA_CITY_MAP.renderDetail(state);return;}
+    $('#detail').classList.remove('city-detail');
     const ps=visibleProvinces();
     if(!ps.length){$('#detail').innerHTML='<h2>没有匹配结果</h2><p class="detail-empty">换个城市、省份或区号试试。</p><button class="outline" data-reset="true">清除筛选</button>';return;}
     let p=ps.find(p=>p.id===state.province)||ps[0];state.province=p.id;
@@ -67,22 +69,26 @@
   function renderTable(){
     $('#table-body').innerHTML=visibleProvinces().map(p=>`<tr><td>${p.name}</td><td>${esc(p.pattern)}</td><td><div class="table-cities">${rowsFor(p).map(r=>`<span class="${rowClass(r)}"><b>${r.code}</b>${esc(r.city)}</span>`).join('')}</div></td></tr>`).join('')||'<tr><td colspan="3" class="empty-state">没有匹配结果</td></tr>';
   }
-  function updateUrl(){const q=new URLSearchParams();q.set('view',state.view);if(state.prefix!=='all')q.set('prefix',state.prefix);if(state.province!==44)q.set('province',state.province);if(state.query)q.set('q',state.query);history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
-  function render(){renderControls();renderDetail();renderMap();renderCircles();renderTable();window.AREA_MEMORY.render(state);updateUrl();$('#announcement').textContent=`${visibleProvinces().length} 个省份，${countCodes(visibleProvinces())} 个区号`;}
+  function updateUrl(){const q=new URLSearchParams();q.set('view',state.view);if(state.prefix!=='all')q.set('prefix',state.prefix);if(state.province!==44||(state.view==='map'&&state.mapZoom==='province'))q.set('province',state.province);if(state.view==='map')q.set('zoom',state.mapZoom);if(state.mapCity&&state.view==='map')q.set('city',state.mapCity);if(state.query)q.set('q',state.query);history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
+  function render(){if(state.view==='map'&&state.mapZoom==='province'&&(state.prefix!=='all'||state.query)){const ps=visibleProvinces();if(ps.length&&!ps.some(p=>p.id===state.province)){state.province=ps[0].id;state.mapCity=null;}}renderControls();renderDetail();renderMap();renderCircles();renderTable();window.AREA_MEMORY.render(state);updateUrl();$('#announcement').textContent=`${visibleProvinces().length} 个省份，${countCodes(visibleProvinces())} 个区号`;}
   document.addEventListener('click',e=>{
-    const b=e.target.closest('[data-view],[data-prefix],[data-province],[data-open-province],[data-reset]');if(!b)return;
+    const b=e.target.closest('[data-view],[data-prefix],[data-province],[data-open-province],[data-reset],[data-map-back],[data-map-retry],[data-city]');if(!b)return;
     if(b.dataset.view)state.view=b.dataset.view;
     if(b.dataset.prefix)state.prefix=b.dataset.prefix;
-    if(b.dataset.province){const id=Number(b.dataset.province);if(!visibleProvinces().some(p=>p.id===id)){state.prefix='all';state.query='';$('#search').value='';}state.province=id;}
-    if(b.dataset.openProvince){state.province=Number(b.dataset.openProvince);state.prefix=b.dataset.group;state.view='map';}
+    if(b.dataset.province){const id=Number(b.dataset.province);if(!visibleProvinces().some(p=>p.id===id)){state.prefix='all';state.query='';$('#search').value='';}state.province=id;state.mapZoom='province';state.mapCity=null;}
+    if(b.dataset.openProvince){state.province=Number(b.dataset.openProvince);state.prefix=b.dataset.group;state.view='map';state.mapZoom='province';state.mapCity=null;}
+    if(b.dataset.city)state.mapCity=Number(b.dataset.city);
+    if(b.dataset.mapBack){state.mapZoom='country';state.mapCity=null;}
     if(b.dataset.reset){state.prefix='all';state.query='';$('#search').value='';}
     render();
     if(b.dataset.openProvince)$('#map-view').scrollIntoView({block:'start',behavior:'smooth'});
   });
   document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('svg [role="button"]')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}if(e.key==='/'&&!e.target.matches('input,textarea')){e.preventDefault();$('#search').focus();}});
   $('#search').addEventListener('input',e=>{state.query=e.target.value.trim();render();});
-  document.addEventListener('change',e=>{if(e.target.id==='province-select'){state.province=Number(e.target.value);render();}});
+  document.addEventListener('change',e=>{if(e.target.id==='province-select'){state.province=Number(e.target.value);state.mapZoom='province';state.mapCity=null;if(!visibleProvinces().some(p=>p.id===state.province)){state.prefix='all';state.query='';$('#search').value='';}render();}});
   $('#print').addEventListener('click',()=>window.print());
   const q=new URLSearchParams(location.search);if(['memory','map','circles','table'].includes(q.get('view')))state.view=q.get('view');else if(q.has('province'))state.view='map';if(groups.some(g=>g.id===q.get('prefix')))state.prefix=q.get('prefix');if(provinces.some(p=>p.id===Number(q.get('province'))))state.province=Number(q.get('province'));state.query=q.get('q')||'';$('#search').value=state.query;
+  if(state.view==='map')state.mapZoom=['country','province'].includes(q.get('zoom'))?q.get('zoom'):q.has('province')?'province':'country';
+  if(/^\d{6}$/.test(q.get('city')||''))state.mapCity=Number(q.get('city'));
   render();
 })();

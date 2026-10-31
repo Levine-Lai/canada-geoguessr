@@ -24,6 +24,7 @@ jobs:
           mkdir _site
           cp index.html styles.css app.js data.js photos.js scenes.js gallery.js panorama-data.js panoramas.js courses.js CREDITS.md _site/
           cp -r assets _site/assets
+          cp -r designs _site/designs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

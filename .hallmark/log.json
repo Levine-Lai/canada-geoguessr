@@ -1,1 +1,20 @@
-[{"date":"2026-10-27","macrostructure":"Workbench","theme":"Garden","nav":"N3 side rail","footer":"Ft2 inline rule","enrichment":"interactive province map","brief":"Canada GeoGuessr study atlas"}]
+[
+  {
+    "date": "2026-10-27",
+    "macrostructure": "Workbench",
+    "theme": "Garden",
+    "nav": "N3 side rail",
+    "footer": "Ft2 inline rule",
+    "enrichment": "interactive province map",
+    "brief": "Canada GeoGuessr study atlas"
+  },
+  {
+    "date": "2026-10-31",
+    "macrostructure": "Map / Diagram",
+    "theme": "Garden (existing site)",
+    "nav": "Wordmark + return link",
+    "footer": "Inline single line",
+    "enrichment": "interactive province map and circle groups",
+    "brief": "Chinese mainland telephone area-code learning table; all prefixes, focus 06/07/08"
+  }
+]

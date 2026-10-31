@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f4ee"><meta name="description" content="中国大陆电话区号学习地图与圆圈分组表，重点对照06、07、08开头的省份和城市。">
+  <title>中国电话区号 · 北纬</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="data.js" defer></script><script src="map.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到学习表</a>
+<header class="masthead"><a class="brand" href="../../index.html"><span class="brand-mark">北</span><span>北纬 <small>地理学习手册</small></span></a><a class="back" href="../../index.html">加拿大教程 ↗</a></header>
+<main id="main">
+  <div class="heading"><div><span class="eyebrow">中国大陆 · 固定电话</span><h1>电话区号学习表</h1></div><button id="print" class="outline">打印学习表 ↗</button></div>
+  <div class="toolbar"><div class="view-tabs" aria-label="视图"><button data-view="map" aria-pressed="true">◫ 地图版</button><button data-view="circles" aria-pressed="false">◉ 圆圈版</button><button data-view="table" aria-pressed="false">☷ 对照表</button></div><label class="search"><span>查找</span><input id="search" type="search" placeholder="省份、城市或区号" aria-label="搜索省份、城市或区号"><kbd>/</kbd></label></div>
+  <nav id="prefixes" class="prefixes" aria-label="区号前缀筛选"></nav>
+  <section class="focus-band" id="focus-band" aria-live="polite"></section>
+  <section id="map-view" class="workspace" data-screen-label="地图版">
+    <div class="map-panel"><div class="panel-top"><span>区号分布</span><span class="muted">点省份看城市</span></div><div id="map-holder"></div><div class="map-legend"><span><i class="legend-main"></i>主要前缀</span><span><i class="legend-extra"></i>06 补充分配</span><span><i class="legend-special"></i>三位区号城市</span></div><p class="map-note">底色表示省份主要前缀；06 和三位区号用圆点单列。</p></div>
+    <aside id="detail" class="detail" aria-label="省份区号详情"></aside>
+  </section>
+  <section id="circles-view" hidden data-screen-label="圆圈版"><div id="circle-grid" class="circle-grid"></div></section>
+  <section id="table-view" hidden data-screen-label="对照表"><div class="table-wrap"><table><thead><tr><th>省份</th><th>区号段</th><th>城市 / 本地网</th></tr></thead><tbody id="table-body"></tbody></table></div></section>
+  <section class="study-notes"><div class="section-title"><h2>先记住这三组</h2><span>06 / 07 / 08</span></div><div class="memory-grid"><button data-prefix="06" class="memory"><strong>06</strong><span><b>鲁 · 粤 · 滇，零散分布</b><small>063 山东　066 广东　069 云南</small></span><span class="arrow">↗</span></button><button data-prefix="07" class="memory"><strong>07</strong><span><b>两湖、江西、两广</b><small>武汉 027、广州 020 另记</small></span><span class="arrow">↗</span></button><button data-prefix="08" class="memory"><strong>08</strong><span><b>川黔滇藏，加上海南</b><small>成都、眉山、资阳共用 028</small></span><span class="arrow">↗</span></button></div></section>
+  <details class="sources"><summary>口径与来源 <span>整理 2026.10.31</span></summary><div><p>采用含长途字冠 0 的国内常见写法；例如 010 实际由字冠 0 和区号 10 组成。x 表示一位数字，号段有空缺，不代表每个号码均已分配。按省份和主要本地网学习，边界村镇、跨省接入和兵团城市等细分情况不逐一列出。港澳台使用各自编号体系，地图以灰色标示。</p><p>已合并的常见旧区号不列入现用表：莱芜 0634 → 0531；开封 0378 → 0371；抚顺 0413、铁岭 0410、本溪 0414 → 024；株洲 0733、湘潭 0732 → 0731；遵义 0852、安顺 0853 → 0851。026 未启用。</p><p><a href="https://www.miit.gov.cn/jgsj/xgj/ywzy/art/2020/art_d88d3e67ab544473a9a287a359532cae.html" target="_blank" rel="noreferrer">工信部《电信网编号计划》</a> · <a href="https://zh.wikipedia.org/zh-cn/中国大陆固定电话号码" target="_blank" rel="noreferrer">区号分配对照</a> · <a href="https://sd.people.com.cn/BIG5/n2/2020/0425/c393199-33975381.html" target="_blank" rel="noreferrer">济莱并网调整</a> · <a href="https://fuwu.most.gov.cn/html/bszx/cxfwl/20220822/123123297.html" target="_blank" rel="noreferrer">贵州办公电话核对</a> · <a href="https://datav.aliyun.com/portal/school/atlas/area_selector" target="_blank" rel="noreferrer">地图数据：阿里云 DataV</a></p></div></details>
+</main><footer><span>北纬 · 区号学习</span><span>地图与圆圈使用同一份区号表</span></footer>
+<div id="announcement" class="sr-only" role="status"></div>
+</body></html>

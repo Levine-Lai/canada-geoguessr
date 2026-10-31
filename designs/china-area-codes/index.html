@@ -4,17 +4,18 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f4ee"><meta name="description" content="中国大陆电话区号学习地图与圆圈分组表，重点对照06、07、08开头的省份和城市。">
   <title>中国电话区号 · 北纬</title>
-  <link rel="stylesheet" href="style.css?v=contained-circles-2">
-  <script src="data.js" defer></script><script src="map.js" defer></script><script src="app.js?v=contained-circles-2" defer></script>
+  <link rel="stylesheet" href="style.css?v=contained-circles-2"><link rel="stylesheet" href="memory.css?v=memory-1">
+  <script src="data.js" defer></script><script src="map.js" defer></script><script src="memory.js?v=memory-1" defer></script><script src="app.js?v=memory-1" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">跳到学习表</a>
 <header class="masthead"><a class="brand" href="../../index.html"><span class="brand-mark">北</span><span>北纬 <small>地理学习手册</small></span></a><a class="back" href="../../index.html">加拿大教程 ↗</a></header>
 <main id="main">
   <div class="heading"><div><span class="eyebrow">中国大陆 · 固定电话</span><h1>电话区号学习表</h1></div><button id="print" class="outline">打印学习表 ↗</button></div>
-  <div class="toolbar"><div class="view-tabs" aria-label="视图"><button data-view="map" aria-pressed="true">◫ 地图版</button><button data-view="circles" aria-pressed="false">◉ 圆圈版</button><button data-view="table" aria-pressed="false">☷ 对照表</button></div><label class="search"><span>查找</span><input id="search" type="search" placeholder="省份、城市或区号" aria-label="搜索省份、城市或区号"><kbd>/</kbd></label></div>
+  <div class="toolbar"><div class="view-tabs" aria-label="视图"><button data-view="memory" aria-pressed="true">◇ 记忆版</button><button data-view="map" aria-pressed="false">◫ 地图版</button><button data-view="circles" aria-pressed="false">◉ 圆圈版</button><button data-view="table" aria-pressed="false">☷ 对照表</button></div><label class="search"><span>查找</span><input id="search" type="search" placeholder="省份、城市或区号" aria-label="搜索省份、城市或区号"><kbd>/</kbd></label></div>
   <nav id="prefixes" class="prefixes" aria-label="区号前缀筛选"></nav>
   <section class="focus-band" id="focus-band" aria-live="polite"></section>
+  <section id="memory-view" data-screen-label="记忆版"></section>
   <section id="map-view" class="workspace" data-screen-label="地图版">
     <div class="map-panel"><div class="panel-top"><span>区号分布</span><span class="muted">点省份看城市</span></div><div id="map-holder"></div><div class="map-legend"><span><i class="legend-main"></i>主要前缀</span><span><i class="legend-extra"></i>06 补充分配</span><span><i class="legend-special"></i>三位区号城市</span></div><p class="map-note">底色表示省份主要前缀；06 和三位区号用圆点单列。</p></div>
     <aside id="detail" class="detail" aria-label="省份区号详情"></aside>

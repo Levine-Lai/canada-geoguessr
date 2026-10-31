@@ -3,7 +3,7 @@
   const provinces = window.AREA_PROVINCES, groups = window.AREA_GROUPS;
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const state = {view:'map',prefix:'all',province:44,query:''};
+  const state = {view:'memory',prefix:'all',province:44,query:''};
   const rowClass = r => r.code.startsWith('06') ? 'extra' : r.code.length===3 ? 'special' : '';
   const matches = (p,r) => (state.prefix==='all'||r.code.startsWith(state.prefix)) && (!state.query || (p.name+r.code+r.city).includes(state.query));
   const rowsFor = p => p.rows.filter(r=>matches(p,r)).sort((a,b)=>a.code.localeCompare(b.code));
@@ -13,7 +13,9 @@
   function renderControls(){
     $('#prefixes').innerHTML = [['all','全部'],...groups.map(g=>[g.id,g.id])].map(([id,label])=>`<button data-prefix="${id}" aria-pressed="${state.prefix===id}" class="${id===state.prefix?'active ':''}${['06','07','08'].includes(id)?'important':''}">${label}</button>`).join('');
     document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===state.view));
-    ['map','circles','table'].forEach(v=>$(`#${v}-view`).hidden=v!==state.view);
+    ['memory','map','circles','table'].forEach(v=>$(`#${v}-view`).hidden=v!==state.view);
+    $('#main').dataset.currentView=state.view;
+    $('#main').dataset.memoryFiltered=state.prefix!=='all'||Boolean(state.query);
     const g=groups.find(g=>g.id===state.prefix), ps=visibleProvinces();
     $('#focus-band').innerHTML=`<span class="focus-number">${g?g.id:'0x'}</span><div class="focus-copy"><h2>${g?esc(g.title):'01—09 · 全国区号'}</h2><p>${state.query?`搜索「${esc(state.query)}」 · `:''}${g?esc(g.memory):'03 华北 · 04 东北 · 05 华东 · 07 中南 · 08 西南 · 09 西北'}</p></div><span class="focus-count">${ps.length} 省份 / ${countCodes(ps)} 区号</span>`;
   }
@@ -65,8 +67,8 @@
   function renderTable(){
     $('#table-body').innerHTML=visibleProvinces().map(p=>`<tr><td>${p.name}</td><td>${esc(p.pattern)}</td><td><div class="table-cities">${rowsFor(p).map(r=>`<span class="${rowClass(r)}"><b>${r.code}</b>${esc(r.city)}</span>`).join('')}</div></td></tr>`).join('')||'<tr><td colspan="3" class="empty-state">没有匹配结果</td></tr>';
   }
-  function updateUrl(){const q=new URLSearchParams();if(state.view!=='map')q.set('view',state.view);if(state.prefix!=='all')q.set('prefix',state.prefix);if(state.province!==44)q.set('province',state.province);if(state.query)q.set('q',state.query);history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
-  function render(){renderControls();renderDetail();renderMap();renderCircles();renderTable();updateUrl();$('#announcement').textContent=`${visibleProvinces().length} 个省份，${countCodes(visibleProvinces())} 个区号`;}
+  function updateUrl(){const q=new URLSearchParams();q.set('view',state.view);if(state.prefix!=='all')q.set('prefix',state.prefix);if(state.province!==44)q.set('province',state.province);if(state.query)q.set('q',state.query);history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
+  function render(){renderControls();renderDetail();renderMap();renderCircles();renderTable();window.AREA_MEMORY.render(state);updateUrl();$('#announcement').textContent=`${visibleProvinces().length} 个省份，${countCodes(visibleProvinces())} 个区号`;}
   document.addEventListener('click',e=>{
     const b=e.target.closest('[data-view],[data-prefix],[data-province],[data-open-province],[data-reset]');if(!b)return;
     if(b.dataset.view)state.view=b.dataset.view;
@@ -81,6 +83,6 @@
   $('#search').addEventListener('input',e=>{state.query=e.target.value.trim();render();});
   document.addEventListener('change',e=>{if(e.target.id==='province-select'){state.province=Number(e.target.value);render();}});
   $('#print').addEventListener('click',()=>window.print());
-  const q=new URLSearchParams(location.search);if(['map','circles','table'].includes(q.get('view')))state.view=q.get('view');if(groups.some(g=>g.id===q.get('prefix')))state.prefix=q.get('prefix');if(provinces.some(p=>p.id===Number(q.get('province'))))state.province=Number(q.get('province'));state.query=q.get('q')||'';$('#search').value=state.query;
+  const q=new URLSearchParams(location.search);if(['memory','map','circles','table'].includes(q.get('view')))state.view=q.get('view');else if(q.has('province'))state.view='map';if(groups.some(g=>g.id===q.get('prefix')))state.prefix=q.get('prefix');if(provinces.some(p=>p.id===Number(q.get('province'))))state.province=Number(q.get('province'));state.query=q.get('q')||'';$('#search').value=state.query;
   render();
 })();

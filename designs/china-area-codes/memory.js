@@ -16,7 +16,7 @@
   let current,recall=false;
   const revealed=new Set();
   const province=id=>provinces.find(p=>p.id===id);
-  const match=(p,prefix)=>p.rows.some(r=>r.code.startsWith(prefix)&&(!current.query||(p.name+r.code+r.city).includes(current.query)));
+  const match=(p,prefix)=>p.rows.some(r=>(current.prefix==='all'||r.code.startsWith(prefix))&&(!current.query||(p.name+r.code+r.city).includes(current.query)));
   const activeZone=z=>current.prefix==='all'||current.prefix===z.id||(current.prefix==='06'&&z.ids.some(id=>supplements.some(s=>s.id===id)));
   function render(state){
     current=state;

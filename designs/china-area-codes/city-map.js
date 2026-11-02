@@ -44,7 +44,7 @@
   function toolbar(){
     const p=window.AREA_PROVINCES.find(p=>p.id===state.province),zoomed=state.mapZoom==='province';
     document.querySelector('.map-panel .panel-top').innerHTML=`<div class="map-breadcrumb">${zoomed?'<button data-map-back="true">← 全国</button><span>/</span>':''}<strong>${zoomed?p.name:'全国区号'}</strong></div><div class="map-tools"><button data-map-expand="true" aria-label="${document.querySelector('#map-dialog')?.open?'收起地图':'展开地图'}">${document.querySelector('#map-dialog')?.open?'收起 ↙':'展开 ↗'}</button></div>`;
-    document.querySelector('.map-note').textContent=zoomed?'城市 · 电话区号 · 车牌':'点击省份，平滑放大查看城市区号。';
+    document.querySelector('.map-note').textContent=zoomed?'城市 · 电话区号 · 车牌':'点选省份查看城市';
     document.querySelector('#map-view').classList.toggle('city-mode',zoomed);
   }
   function layout(data,box){
@@ -61,10 +61,10 @@
   }
   function paint(data){
     activeData=data;
-    const box=fit(data.bounds),unit=box[2]/810,selected=Number(state.mapCity),hasMatch=data.cities.some(matches);
+    const box=fit(data.bounds),unit=box[2]/810,selected=focusedCity(data)?.id,hasMatch=data.cities.some(matches);
     cities.innerHTML=`<g class="city-regions">${data.cities.filter(c=>c.path).map(c=>`<path d="${c.path}" class="city-shape ${phoneClass(c.code)} ${selected===c.id?'city-selected':''} ${hasMatch&&!matches(c)?'city-filtered':''}" data-city="${c.id}" role="button" tabindex="0" aria-label="${esc(c.name)} ${c.code} ${esc(plate(c))}"><title>${esc(c.name)} ${c.code} ${esc(plate(c))}${c.note?'；'+esc(c.note):''}${plateNote(c)?'；'+esc(plateNote(c)):''}</title></path>`).join('')}</g><g class="city-label-layer">${layout(data,box).map(n=>{
       const x=box[0]+n.x*unit,y=box[1]+n.y*unit,ax=n.c.center[0],ay=n.c.center[1],offset=Math.hypot(n.x-n.ax,n.y-n.ay)>12;
-      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code} ${esc(plate(n.c))}">${offset?`<line x1="${ax}" y1="${ay}" x2="${x}" y2="${y}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${3*unit}"></rect><text x="${x}" y="${y-n.fh*1.2*unit}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.35*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${n.c.code}</text><text x="${x}" y="${y+n.fh*1.85*unit}" class="city-plate" style="font-size:${n.fh*unit}px">${esc(plate(n.c))}</text></g>`;
+      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code} ${esc(plate(n.c))}">${offset?`<line x1="${ax}" y1="${ay}" x2="${x}" y2="${y}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${n.fh*unit}"></rect><text x="${x}" y="${y-n.fh*1.2*unit}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.35*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${n.c.code}</text><text x="${x}" y="${y+n.fh*1.85*unit}" class="city-plate" style="font-size:${n.fh*unit}px">${esc(plate(n.c))}</text></g>`;
     }).join('')}</g>`;
     const extras=data.cities.filter(c=>c.inset),extraBox=document.querySelector('#city-map-extras');
     extraBox.hidden=!extras.length;extraBox.innerHTML=extras.length?`<span class="inset-heading">${data.id===46?'南海岛屿':'底图外补充城市'}</span>${extras.map(c=>`<button data-city="${c.id}" class="${selected===c.id?'active':''}"><span>${c.label}</span><b>${c.code}</b><em class="plate-badge">${esc(plate(c))}</em></button>`).join('')}`:'';
@@ -72,25 +72,41 @@
     renderDetail(state);
     return box;
   }
+  const visibleCities=data=>data.cities.filter(matches).slice().sort((a,b)=>a.code.localeCompare(b.code)||a.id-b.id);
+  const focusedCity=data=>visibleCities(data).find(c=>c.id===Number(state.mapCity))||visibleCities(data)[0];
   function renderDetail(next){
     state=next;
     const detail=document.querySelector('#detail'),data=cache.get(state.province),p=window.AREA_PROVINCES.find(p=>p.id===state.province);
+    const oldScroll=detail.dataset.province===String(p.id)?detail.querySelector('.city-index')?.scrollTop||0:0;
+    detail.dataset.province=p.id;
     detail.classList.add('city-detail');
-    if(!data){detail.innerHTML=`<span class="kicker">省内地图</span><h2>${p.name}</h2><p class="detail-empty">正在载入城市区号…</p>`;return;}
-    const selected=data.cities.find(c=>c.id===Number(state.mapCity)),municipal=[11,12,31,50].includes(p.id);
-    const notes=selected?[selected.note,plateNote(selected)].filter(Boolean):[...new Set(data.cities.flatMap(c=>[c.note,plateNote(c)]).filter(Boolean))];
-    detail.innerHTML=`<span class="kicker">${municipal?'区县':'城市 / 地区'}区号 · ${data.cities.length} 地区</span><h2>${p.name} <small class="province-abbr">${plates.abbreviation(p.id)}</small></h2><span class="pattern">${esc(p.pattern)}</span><div class="province-picker"><select id="province-select" aria-label="选择省份">${window.AREA_PROVINCES.map(q=>`<option value="${q.id}" ${q.id===p.id?'selected':''}>${q.name}</option>`).join('')}</select></div>${selected?`<div class="city-selection"><span>${esc(selected.name)}</span><strong>${selected.code}</strong><em class="plate-badge">${esc(plate(selected))}</em></div>`:''}${municipal?`<p class="city-shared">全市统一使用 ${data.cities[0].code}；${plates.abbreviation(p.id)}牌字母不按区县一一对应。</p>`:''}<div class="city-index">${data.cities.filter(matches).slice().sort((a,b)=>a.code.localeCompare(b.code)||a.id-b.id).map(c=>`<button class="city-index-row ${phoneClass(c.code)} ${selected?.id===c.id?'active':''}" data-city="${c.id}" aria-pressed="${selected?.id===c.id}"><span>${esc(c.label)}</span><b>${c.code}</b><em class="plate-badge">${esc(plate(c))}</em></button>`).join('')}</div>${!data.cities.some(matches)?'<p class="detail-empty">省内无匹配城市</p>':''}${notes.length?`<p class="small-note">${notes.map(esc).join('<br>')}</p>`:''}`;
+    const options=window.AREA_PROVINCES.map(q=>`<option value="${q.id}" ${q.id===p.id?'selected':''}>${q.name}</option>`).join('');
+    const header=count=>`<div class="detail-head"><div class="detail-title"><div><span class="kicker">${count}</span><h2>${p.name}</h2></div><span class="province-seal" aria-label="车牌简称${plates.abbreviation(p.id)}">${plates.abbreviation(p.id)}</span></div><div class="province-picker"><select id="province-select" aria-label="选择省份">${options}</select><span class="pattern">${esc(p.pattern)}</span></div></div>`;
+    if(!data){detail.innerHTML=header('城市 / 地区')+'<p class="detail-empty" role="status">正在载入城市…</p>';return;}
+    const entries=visibleCities(data),selected=focusedCity(data),municipal=[11,12,31,50].includes(p.id);
+    const notes=selected?[selected.note,plateNote(selected)].filter(Boolean):[];
+    const values=code=>code.split(' / ').map(part=>`<span>${esc(part)}</span>`).join('');
+    detail.innerHTML=header(`${entries.length} 个${municipal?'区县':'城市 / 地区'}`)+
+      (selected?`<section class="city-selection" aria-label="${esc(selected.name)}区号与车牌"><h3>${esc(selected.name)}</h3><div class="selection-values"><div class="code-orb"><span class="orb-label">电话区号</span><strong class="orb-value">${values(selected.code)}</strong></div><div class="code-orb plate-orb"><span class="orb-label">车牌</span><strong class="orb-value">${values(plate(selected))}</strong></div></div></section>`:'')+
+      (municipal?`<p class="city-shared">全市 ${data.cities[0].code} · ${plates.abbreviation(p.id)}牌字母不与区县一一对应</p>`:'')+
+      `<div class="city-index" aria-label="${p.name}城市列表">${entries.map(c=>`<button class="city-index-row ${phoneClass(c.code)} ${selected?.id===c.id?'active':''}" data-city="${c.id}" aria-pressed="${selected?.id===c.id}"><span class="city-name">${esc(c.label)}</span><b>${esc(c.code)}</b><em class="plate-badge">${esc(plate(c))}</em></button>`).join('')}</div>`+
+      (!entries.length?'<div class="detail-empty">没有匹配的城市<button class="outline" data-reset="true">清除筛选</button></div>':'')+
+      (notes.length?`<p class="small-note">${notes.map(esc).join('<br>')}</p>`:'');
+    const index=detail.querySelector('.city-index'),active=index?.querySelector('.active');
+    if(index){index.scrollTop=oldScroll;if(active&&state.mapCity){const row=active.getBoundingClientRect(),list=index.getBoundingClientRect();if(row.top<list.top)index.scrollTop-=list.top-row.top;else if(row.bottom>list.bottom)index.scrollTop+=row.bottom-list.bottom;}}
   }
   function render(next,markup){
     state=next;if(state.view!=='map')return;
-    ensure();toolbar();
+    ensure();toolbar();renderDetail(state);
     national.innerHTML=markup.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'');
     const token=++request,zoomed=state.mapZoom==='province',key=zoomed?String(state.province):'country',status=document.querySelector('#map-load-status');
     svg.dataset.level=zoomed?'province':'country';
     if(!zoomed){
       document.querySelector('#city-map-extras').hidden=true;status.hidden=true;svg.setAttribute('aria-label','中国电话区号分布地图');
       if(lastKey!=='country')fly(FULL,()=>{if(state.mapZoom==='country')cities.innerHTML='';});
-      lastKey=key;return;
+      lastKey=key;
+      if(!cache.has(state.province))load(state.province).then(()=>{if(token===request&&state.view==='map'&&state.mapZoom==='country')renderDetail(state);}).catch(()=>{if(token===request)document.querySelector('#detail').innerHTML='<h2>'+esc(pName())+'</h2><p class="detail-empty">城市信息暂未载入</p><button class="outline" data-map-retry="true">重试</button>';});
+      return;
     }
     const moving=lastKey!==key;
     if(moving){

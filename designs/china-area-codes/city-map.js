@@ -1,11 +1,13 @@
 (() => {
   'use strict';
-  const FULL=[0,0,810,530], cache=new Map(), pending=new Map();
+  const FULL=[0,0,810,530], cache=new Map(), pending=new Map(), plates=window.AREA_PLATES;
+  const plate=c=>plates.city(c.id)?.plate||'';
+  const plateNote=c=>plates.city(c.id)?.note||'';
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let svg, national, cities, state, current=FULL.slice(), frame=0, request=0, lastKey='', restore, activeData;
   const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
   const phoneClass=code=>code.startsWith('06')?'city-extra':code.split(' / ').some(c=>c.length===3)?'city-special':'';
-  const matches=c=>(state.prefix==='all'||c.code.split(' / ').some(code=>code.startsWith(state.prefix)))&&(!state.query||(c.name+c.label+c.code).includes(state.query));
+  const matches=c=>(state.prefix==='all'||c.code.split(' / ').some(code=>code.startsWith(state.prefix)))&&plates.matchesCity({...c,plate:plate(c),note:plateNote(c)},state.query,state.province);
   function fit(bounds){
     let w=(bounds[2]-bounds[0])*1.38,h=(bounds[3]-bounds[1])*1.38;
     const rect=svg?.getBoundingClientRect(),aspect=rect?.width&&rect?.height?rect.width/rect.height:810/530;
@@ -42,12 +44,12 @@
   function toolbar(){
     const p=window.AREA_PROVINCES.find(p=>p.id===state.province),zoomed=state.mapZoom==='province';
     document.querySelector('.map-panel .panel-top').innerHTML=`<div class="map-breadcrumb">${zoomed?'<button data-map-back="true">← 全国</button><span>/</span>':''}<strong>${zoomed?p.name:'全国区号'}</strong></div><div class="map-tools"><button data-map-expand="true" aria-label="${document.querySelector('#map-dialog')?.open?'收起地图':'展开地图'}">${document.querySelector('#map-dialog')?.open?'收起 ↙':'展开 ↗'}</button></div>`;
-    document.querySelector('.map-note').textContent=zoomed?'点击城市可高亮查看；共用区号分别标注。':'点击省份，平滑放大查看城市区号。';
+    document.querySelector('.map-note').textContent=zoomed?'城市 · 电话区号 · 车牌':'点击省份，平滑放大查看城市区号。';
     document.querySelector('#map-view').classList.toggle('city-mode',zoomed);
   }
   function layout(data,box){
     const width=Math.max(240,svg.getBoundingClientRect().width),factor=810/width,phone=width<540,fh=(phone?10:12)*factor,fc=(phone?12:16)*factor,H=810*box[3]/box[2];
-    const nodes=data.cities.filter(c=>!c.inset).map(c=>({c,ax:(c.center[0]-box[0])/box[2]*810,ay:(c.center[1]-box[1])/box[2]*810,x:(c.center[0]-box[0])/box[2]*810,y:(c.center[1]-box[1])/box[2]*810,w:Math.max(60*factor,c.label.length*fh+14*factor,c.code.length*fc*.6+14*factor),h:(phone?32:38)*factor,fh,fc}));
+    const nodes=data.cities.filter(c=>!c.inset).map(c=>({c,ax:(c.center[0]-box[0])/box[2]*810,ay:(c.center[1]-box[1])/box[2]*810,x:(c.center[0]-box[0])/box[2]*810,y:(c.center[1]-box[1])/box[2]*810,w:Math.max(60*factor,c.label.length*fh+14*factor,c.code.length*fc*.6+14*factor,plate(c).length*fh*.85+14*factor),h:(phone?46:54)*factor,fh,fc}));
     for(let step=0;step<220;step++){
       for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
         const a=nodes[i],b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,ox=(a.w+b.w)/2+5-Math.abs(dx),oy=(a.h+b.h)/2+5-Math.abs(dy);
@@ -60,12 +62,12 @@
   function paint(data){
     activeData=data;
     const box=fit(data.bounds),unit=box[2]/810,selected=Number(state.mapCity),hasMatch=data.cities.some(matches);
-    cities.innerHTML=`<g class="city-regions">${data.cities.filter(c=>c.path).map(c=>`<path d="${c.path}" class="city-shape ${phoneClass(c.code)} ${selected===c.id?'city-selected':''} ${hasMatch&&!matches(c)?'city-filtered':''}" data-city="${c.id}" role="button" tabindex="0" aria-label="${esc(c.name)} ${c.code}"><title>${esc(c.name)} ${c.code}${c.note?'；'+esc(c.note):''}</title></path>`).join('')}</g><g class="city-label-layer">${layout(data,box).map(n=>{
+    cities.innerHTML=`<g class="city-regions">${data.cities.filter(c=>c.path).map(c=>`<path d="${c.path}" class="city-shape ${phoneClass(c.code)} ${selected===c.id?'city-selected':''} ${hasMatch&&!matches(c)?'city-filtered':''}" data-city="${c.id}" role="button" tabindex="0" aria-label="${esc(c.name)} ${c.code} ${esc(plate(c))}"><title>${esc(c.name)} ${c.code} ${esc(plate(c))}${c.note?'；'+esc(c.note):''}${plateNote(c)?'；'+esc(plateNote(c)):''}</title></path>`).join('')}</g><g class="city-label-layer">${layout(data,box).map(n=>{
       const x=box[0]+n.x*unit,y=box[1]+n.y*unit,ax=n.c.center[0],ay=n.c.center[1],offset=Math.hypot(n.x-n.ax,n.y-n.ay)>12;
-      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code}">${offset?`<line x1="${ax}" y1="${ay}" x2="${x}" y2="${y}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${3*unit}"></rect><text x="${x}" y="${y-n.fh*.4*unit}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.8*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${n.c.code}</text></g>`;
+      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code} ${esc(plate(n.c))}">${offset?`<line x1="${ax}" y1="${ay}" x2="${x}" y2="${y}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${3*unit}"></rect><text x="${x}" y="${y-n.fh*1.2*unit}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.35*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${n.c.code}</text><text x="${x}" y="${y+n.fh*1.85*unit}" class="city-plate" style="font-size:${n.fh*unit}px">${esc(plate(n.c))}</text></g>`;
     }).join('')}</g>`;
     const extras=data.cities.filter(c=>c.inset),extraBox=document.querySelector('#city-map-extras');
-    extraBox.hidden=!extras.length;extraBox.innerHTML=extras.length?`<span class="inset-heading">${data.id===46?'南海岛屿':'底图外补充城市'}</span>${extras.map(c=>`<button data-city="${c.id}" class="${selected===c.id?'active':''}"><span>${c.label}</span><b>${c.code}</b></button>`).join('')}`:'';
+    extraBox.hidden=!extras.length;extraBox.innerHTML=extras.length?`<span class="inset-heading">${data.id===46?'南海岛屿':'底图外补充城市'}</span>${extras.map(c=>`<button data-city="${c.id}" class="${selected===c.id?'active':''}"><span>${c.label}</span><b>${c.code}</b><em class="plate-badge">${esc(plate(c))}</em></button>`).join('')}`:'';
     svg.setAttribute('aria-label',`${data.name}城市电话区号地图`);
     renderDetail(state);
     return box;
@@ -76,8 +78,8 @@
     detail.classList.add('city-detail');
     if(!data){detail.innerHTML=`<span class="kicker">省内地图</span><h2>${p.name}</h2><p class="detail-empty">正在载入城市区号…</p>`;return;}
     const selected=data.cities.find(c=>c.id===Number(state.mapCity)),municipal=[11,12,31,50].includes(p.id);
-    const notes=selected?.note?[selected.note]:[...new Set(data.cities.filter(c=>c.note).map(c=>c.note))];
-    detail.innerHTML=`<span class="kicker">${municipal?'区县':'城市 / 地区'}区号 · ${data.cities.length} 地区</span><h2>${p.name}</h2><span class="pattern">${esc(p.pattern)}</span><div class="province-picker"><select id="province-select" aria-label="选择省份">${window.AREA_PROVINCES.map(q=>`<option value="${q.id}" ${q.id===p.id?'selected':''}>${q.name}</option>`).join('')}</select></div>${selected?`<div class="city-selection"><span>${esc(selected.name)}</span><strong>${selected.code}</strong></div>`:''}${municipal?`<p class="city-shared">全市统一使用 ${data.cities[0].code}</p>`:''}<div class="city-index">${data.cities.slice().sort((a,b)=>a.code.localeCompare(b.code)||a.id-b.id).map(c=>`<button class="city-index-row ${phoneClass(c.code)} ${selected?.id===c.id?'active':''}" data-city="${c.id}" aria-pressed="${selected?.id===c.id}"><span>${esc(c.label)}</span><b>${c.code}</b></button>`).join('')}</div>${notes.length?`<p class="small-note">${notes.map(esc).join('<br>')}</p>`:''}`;
+    const notes=selected?[selected.note,plateNote(selected)].filter(Boolean):[...new Set(data.cities.flatMap(c=>[c.note,plateNote(c)]).filter(Boolean))];
+    detail.innerHTML=`<span class="kicker">${municipal?'区县':'城市 / 地区'}区号 · ${data.cities.length} 地区</span><h2>${p.name} <small class="province-abbr">${plates.abbreviation(p.id)}</small></h2><span class="pattern">${esc(p.pattern)}</span><div class="province-picker"><select id="province-select" aria-label="选择省份">${window.AREA_PROVINCES.map(q=>`<option value="${q.id}" ${q.id===p.id?'selected':''}>${q.name}</option>`).join('')}</select></div>${selected?`<div class="city-selection"><span>${esc(selected.name)}</span><strong>${selected.code}</strong><em class="plate-badge">${esc(plate(selected))}</em></div>`:''}${municipal?`<p class="city-shared">全市统一使用 ${data.cities[0].code}；${plates.abbreviation(p.id)}牌字母不按区县一一对应。</p>`:''}<div class="city-index">${data.cities.filter(matches).slice().sort((a,b)=>a.code.localeCompare(b.code)||a.id-b.id).map(c=>`<button class="city-index-row ${phoneClass(c.code)} ${selected?.id===c.id?'active':''}" data-city="${c.id}" aria-pressed="${selected?.id===c.id}"><span>${esc(c.label)}</span><b>${c.code}</b><em class="plate-badge">${esc(plate(c))}</em></button>`).join('')}</div>${!data.cities.some(matches)?'<p class="detail-empty">省内无匹配城市</p>':''}${notes.length?`<p class="small-note">${notes.map(esc).join('<br>')}</p>`:''}`;
   }
   function render(next,markup){
     state=next;if(state.view!=='map')return;

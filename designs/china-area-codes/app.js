@@ -1,11 +1,11 @@
 (() => {
   'use strict';
-  const provinces = window.AREA_PROVINCES, groups = window.AREA_GROUPS;
+  const provinces = window.AREA_PROVINCES, groups = window.AREA_GROUPS, plates=window.AREA_PLATES;
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const state = {view:'memory',prefix:'all',province:44,query:'',mapZoom:'country',mapCity:null};
   const rowClass = r => r.code.startsWith('06') ? 'extra' : r.code.length===3 ? 'special' : '';
-  const matches = (p,r) => (state.prefix==='all'||r.code.startsWith(state.prefix)) && (!state.query || (p.name+r.code+r.city).includes(state.query));
+  const matches = (p,r) => (state.prefix==='all'||r.code.startsWith(state.prefix)) && plates.matches(p,r,state.query);
   const rowsFor = p => p.rows.filter(r=>matches(p,r)).sort((a,b)=>a.code.localeCompare(b.code));
   const visibleProvinces = () => provinces.filter(p=>rowsFor(p).length);
   const countCodes = ps => new Set(ps.flatMap(p=>rowsFor(p).map(r=>r.code))).size;
@@ -34,11 +34,11 @@
     const ids=new Set(visibleProvinces().map(p=>p.id));
     const paths=window.AREA_MAP.features.map(f=>{
       const p=provinces.find(p=>p.id===f.id), active=ids.has(f.id), pos=mapOverrides[f.id]||f.center;
-      const label=p?p.name:f.name.replace(/省|特别行政区/g,'');
+      const label=p?p.name+'·'+plates.abbreviation(p.id):f.name.replace(/省|特别行政区/g,'');
       const subtitle=p?(state.prefix==='06'?'06 + '+p.main:p.main):'';
       return `<g class="${active||!p?'':'faded'}"><path d="${f.path}" class="province-shape ${state.province===f.id?'selected':''}" style="fill:${p?groupColor(p.main):'var(--neutral)'}" ${p?`role="button" tabindex="0" data-province="${p.id}" aria-label="${esc(p.name)}，${esc(p.pattern)}"`:''}><title>${esc(label)} ${p?esc(p.pattern):'独立编号体系'}</title></path>${label&&f.id!==81&&f.id!==82&&(active||state.prefix==='all')?`${[11,12,31].includes(f.id)?`<line x1="${f.center[0]}" y1="${f.center[1]}" x2="${pos[0]}" y2="${pos[1]}" stroke="var(--muted)" stroke-width=".5"></line>`:''}<text x="${pos[0]}" y="${pos[1]}" class="province-label" ${p?`data-province="${p.id}" role="button" tabindex="-1" aria-label="放大${esc(p.name)}"`:''}>${esc(label)}${subtitle?`<tspan x="${pos[0]}" dy="15">${subtitle}</tspan>`:''}</text>`:''}</g>`;
     }).join('');
-    const markers=[...extras.map(d=>[...d,'extra']),...specials.map(d=>[...d,'special'])].filter(([id,city,code])=>(state.prefix==='all'||code.startsWith(state.prefix))&&(!state.query||(provinces.find(p=>p.id===id).name+city+code).includes(state.query))).map(([id,city,code,ll,dx,dy,type])=>{
+    const markers=[...extras.map(d=>[...d,'extra']),...specials.map(d=>[...d,'special'])].filter(([id,city,code])=>(state.prefix==='all'||code.startsWith(state.prefix))&&plates.matches(provinces.find(p=>p.id===id),{city,code},state.query)).map(([id,city,code,ll,dx,dy,type])=>{
       const [x,y]=project(ll),showLabel=state.prefix!=='all'||state.query;
       return `<g class="marker-group" role="button" tabindex="0" data-province="${id}" aria-label="${city} ${code}"><title>${city} ${code}</title><circle class="map-dot ${type==='special'?'special-dot':''}" cx="${x}" cy="${y}" r="${state.prefix==='06'?4.5:3.5}"></circle>${showLabel?`<text class="marker-label" x="${x+dx}" y="${y+dy}" text-anchor="middle">${code}</text>`:''}</g>`;
     }).join('');
@@ -53,21 +53,21 @@
     let p=ps.find(p=>p.id===state.province)||ps[0];state.province=p.id;
     const rows=rowsFor(p);
     const notes={37:'063 是山东的补充区号。原莱芜 0634 已并入济南 0531。',44:'广东同时有 020、07 和 06 三组。汕头 0754 ≠ 汕尾 0660。',53:'云南多数城市用 08；西双版纳 0691、德宏 0692 单独记。',42:'武汉用 027；鄂州主要用 0711，华容区有使用 027 的区域。',51:'成都、眉山、资阳共用 028；四川其余主要本地网以 08 开头。',52:'贵阳、遵义、安顺共用 0851。旧 0852、0853 已停用。',43:'长沙、株洲、湘潭共用 0731。旧 0732、0733 已停用。',21:'沈阳、抚顺、铁岭、本溪共用 024。',46:'海南全省统一使用 0898。',61:'西安、咸阳共用 029。'};
-    $('#detail').innerHTML=`<span class="kicker">${state.prefix==='all'?'省份区号':state.prefix+' 开头'} / ${new Set(rows.map(r=>r.code)).size} 个区号</span><h2>${p.name}</h2><span class="pattern">${esc(p.pattern)}</span><div class="province-picker"><select id="province-select" aria-label="选择省份">${ps.map(q=>`<option value="${q.id}" ${p.id===q.id?'selected':''}>${q.name}</option>`).join('')}</select></div><div class="detail-rows">${rows.map(r=>`<div class="detail-row ${rowClass(r)}"><b>${r.code}</b><span>${esc(r.city)}</span></div>`).join('')}</div>${notes[p.id]?`<p class="small-note">${notes[p.id]}</p>`:''}`;
+    $('#detail').innerHTML=`<span class="kicker">${state.prefix==='all'?'省份区号':state.prefix+' 开头'} / ${new Set(rows.map(r=>r.code)).size} 个区号</span><h2>${p.name} <small class="province-abbr">${plates.abbreviation(p.id)}</small></h2><span class="pattern">${esc(p.pattern)}</span><div class="province-picker"><select id="province-select" aria-label="选择省份">${ps.map(q=>`<option value="${q.id}" ${p.id===q.id?'selected':''}>${q.name}</option>`).join('')}</select></div><div class="detail-rows">${rows.map(r=>`<div class="detail-row ${rowClass(r)}"><b>${r.code}</b><span>${esc(r.city)}<small class="row-plates">${plates.rows(p.id,r).map(c=>`${esc(c.label)} <em class="plate-badge">${esc(c.plate)}</em>`).join(' · ')}</small></span></div>`).join('')}</div>${notes[p.id]?`<p class="small-note">${notes[p.id]}</p>`:''}`;
   }
   function renderCircles(){
     const gs=groups.filter(g=>state.prefix==='all'||state.prefix===g.id);
     $('#circle-grid').classList.toggle('single',state.prefix!=='all');
     $('#circle-grid').innerHTML=gs.map(g=>{
       const order={'06':[37,44,53],'07':[42,43,36,44,45],'08':[51,52,53,54,46]};
-      const ps=provinces.map(p=>({...p,groupRows:p.rows.filter(r=>r.code.startsWith(g.id)&&(!state.query||(p.name+r.city+r.code).includes(state.query)))})).filter(p=>p.groupRows.length).sort((a,b)=>order[g.id]?order[g.id].indexOf(a.id)-order[g.id].indexOf(b.id):a.id-b.id);
+      const ps=provinces.map(p=>({...p,groupRows:p.rows.filter(r=>r.code.startsWith(g.id)&&plates.matches(p,r,state.query))})).filter(p=>p.groupRows.length).sort((a,b)=>order[g.id]?order[g.id].indexOf(a.id)-order[g.id].indexOf(b.id):a.id-b.id);
       if(!ps.length)return '';
       const units=g.id==='02'?ps.flatMap(p=>p.groupRows.map(r=>({id:p.id,name:r.city.split('、')[0],codes:r.code}))):ps.map(p=>({id:p.id,name:p.name,codes:g.id==='01'?'010':p.groupRows.map(r=>r.code.slice(0,3)).filter((v,i,a)=>a.indexOf(v)===i).join(' / ')}));
-      return `<article class="circle-set ${['06','07','08'].includes(g.id)?'priority':''}" style="--group-color:${groupColor(g.id)}"><div class="circle-enclosure ${units.length>6?'dense':''}" role="group" aria-label="${g.id} 开头，包含${units.map(u=>u.name).join('、')}"><div class="enclosure-content"><button class="enclosure-code" data-prefix="${g.id}" aria-label="筛选 ${g.id} 开头">${g.id}</button><div class="contained-provinces">${units.map(u=>`<button class="contained-province" data-open-province="${u.id}" data-group="${g.id}"><span>${esc(u.name)}</span><small>${esc(u.codes)}</small></button>`).join('')}</div></div></div><h2 class="circle-caption">${g.title}</h2><div class="circle-list">${g.id==='06'?ps.map(p=>`<p><b>${p.name}</b> ${p.groupRows.map(r=>`${r.city} ${r.code}`).join(' · ')}</p>`).join(''):`<p>${esc(g.memory)}</p>`}</div></article>`;
+      return `<article class="circle-set ${['06','07','08'].includes(g.id)?'priority':''}" style="--group-color:${groupColor(g.id)}"><div class="circle-enclosure ${units.length>6?'dense':''}" role="group" aria-label="${g.id} 开头，包含${units.map(u=>u.name).join('、')}"><div class="enclosure-content"><button class="enclosure-code" data-prefix="${g.id}" aria-label="筛选 ${g.id} 开头">${g.id}</button><div class="contained-provinces">${units.map(u=>`<button class="contained-province" data-open-province="${u.id}" data-group="${g.id}"><span>${esc(u.name)} <em class="province-abbr">${plates.abbreviation(u.id)}</em></span><small>${esc(u.codes)}</small></button>`).join('')}</div></div></div><h2 class="circle-caption">${g.title}</h2><div class="circle-list">${g.id==='06'?ps.map(p=>`<p><b>${p.name}</b> ${p.groupRows.map(r=>`${r.city} ${r.code}`).join(' · ')}</p>`).join(''):`<p>${esc(g.memory)}</p>`}</div></article>`;
     }).join('')||'<p class="empty-state">没有匹配结果，换个关键词试试。</p>';
   }
   function renderTable(){
-    $('#table-body').innerHTML=visibleProvinces().map(p=>`<tr><td>${p.name}</td><td>${esc(p.pattern)}</td><td><div class="table-cities">${rowsFor(p).map(r=>`<span class="${rowClass(r)}"><b>${r.code}</b>${esc(r.city)}</span>`).join('')}</div></td></tr>`).join('')||'<tr><td colspan="3" class="empty-state">没有匹配结果</td></tr>';
+    $('#table-body').innerHTML=visibleProvinces().map(p=>`<tr><td>${p.name} <small class="province-abbr">${plates.abbreviation(p.id)}</small></td><td>${esc(p.pattern)}</td><td><div class="table-cities">${rowsFor(p).flatMap(r=>plates.rows(p.id,r).filter(c=>(plates.search(p.name+plates.abbreviation(p.id)+r.code,state.query)||plates.matchesCity({...c,code:r.code},state.query,p.id))).map(c=>`<span class="${rowClass(r)}"><span>${esc(c.label)}</span><b>${r.code}</b><em class="plate-badge" title="${esc(c.note||'区域车牌前缀')}">${esc(c.plate)}</em></span>`)).join('')}</div></td></tr>`).join('')||'<tr><td colspan="3" class="empty-state">没有匹配结果</td></tr>';
   }
   function updateUrl(){const q=new URLSearchParams();q.set('view',state.view);if(state.prefix!=='all')q.set('prefix',state.prefix);if(state.province!==44||(state.view==='map'&&state.mapZoom==='province'))q.set('province',state.province);if(state.view==='map')q.set('zoom',state.mapZoom);if(state.mapCity&&state.view==='map')q.set('city',state.mapCity);if(state.query)q.set('q',state.query);history.replaceState(null,'',location.pathname+(q.size?'?'+q:''));}
   function render(){if(state.view==='map'&&state.mapZoom==='province'&&(state.prefix!=='all'||state.query)){const ps=visibleProvinces();if(ps.length&&!ps.some(p=>p.id===state.province)){state.province=ps[0].id;state.mapCity=null;}}renderControls();renderDetail();renderMap();renderCircles();renderTable();window.AREA_MEMORY.render(state);updateUrl();$('#announcement').textContent=`${visibleProvinces().length} 个省份，${countCodes(visibleProvinces())} 个区号`;}

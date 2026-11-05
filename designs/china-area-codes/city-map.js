@@ -9,7 +9,11 @@
   const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
   const phoneClass=code=>code.startsWith('06')?'city-extra':code.split(' / ').some(c=>c.length===3)?'city-special':'';
   const matches=c=>(state.prefix==='all'||c.code.split(' / ').some(code=>code.startsWith(state.prefix)))&&plates.matchesCity({...c,plate:plate(c),note:plateNote(c)},state.query,state.province);
-  function fit(bounds){
+  function fit(bounds,mapWindow){
+    if(mapWindow){
+      const rect=svg.getBoundingClientRect(),scale=Math.min(mapWindow.w/(bounds[2]-bounds[0]),mapWindow.h/(bounds[3]-bounds[1]))*.94;
+      return [(bounds[0]+bounds[2])/2-(mapWindow.x+mapWindow.w/2)/scale,(bounds[1]+bounds[3])/2-(mapWindow.y+mapWindow.h/2)/scale,rect.width/scale,rect.height/scale];
+    }
     let w=(bounds[2]-bounds[0])*1.38,h=(bounds[3]-bounds[1])*1.38;
     const rect=svg?.getBoundingClientRect(),aspect=rect?.width&&rect?.height?rect.width/rect.height:810/530;
     if(w/h>aspect)h=w/aspect;else w=h*aspect;
@@ -48,54 +52,69 @@
     document.querySelector('.map-note').textContent=zoomed?'城市 · 电话区号 · 车牌':'点选省份查看城市';
     document.querySelector('#map-view').classList.toggle('city-mode',zoomed);
   }
-  function layout(data,box){
-    const width=Math.max(240,svg.getBoundingClientRect().width),factor=810/width,phone=width<540,fh=12*factor,fc=(phone?14:16)*factor,H=810*box[3]/box[2];
-    const nodes=data.cities.filter(c=>!c.inset).map(c=>({c,ax:(c.center[0]-box[0])/box[2]*810,ay:(c.center[1]-box[1])/box[2]*810,x:(c.center[0]-box[0])/box[2]*810,y:(c.center[1]-box[1])/box[2]*810,w:Math.max(60*factor,c.label.length*fh+14*factor,Math.max(...c.code.split(' / ').map(code=>code.length))*fc*.6+14*factor,plate(c).length*fh*.85+14*factor),h:(c.code.includes(' / ')?72:54)*factor,fh,fc}));
-    const placed=[],gap=5*factor,pad=8*factor,step=6*factor,hasInset=data.cities.some(c=>c.inset),insetHeight=(40+data.cities.filter(c=>c.inset).length*52)*factor;
-    let crowded=false;
-    // Place each label at the closest unoccupied position; keep its true center as a leader-line anchor.
-    for(const n of nodes.slice().sort((a,b)=>a.ay-b.ay||a.ax-b.ax)){
-      const minX=n.w/2+pad,maxX=810-n.w/2-pad,minY=n.h/2+pad,maxY=H-n.h/2-pad;
-      const fits=(x,y)=>!(hasInset&&x+n.w/2>810-155*factor&&y-n.h/2<insetHeight)&&!placed.some(p=>Math.abs(x-p.x)<(n.w+p.w)/2+gap&&Math.abs(y-p.y)<(n.h+p.h)/2+gap);
-      const anchorX=Math.max(minX,Math.min(maxX,n.ax)),anchorY=Math.max(minY,Math.min(maxY,n.ay));
-      let best=fits(anchorX,anchorY)?{x:anchorX,y:anchorY,d:0}:null;
-      if(!best)for(let y=minY;y<=maxY;y+=step)for(let x=minX;x<=maxX;x+=step){const d=(x-n.ax)**2+(y-n.ay)**2;if((!best||d<best.d)&&fits(x,y))best={x,y,d};}
-      if(best){n.x=best.x;n.y=best.y;}else{n.x=anchorX;n.y=anchorY;crowded=true;}
-      placed.push(n);
+  function labelMetrics(data){
+    const width=svg.getBoundingClientRect().width,phone=width<540;
+    const nodes=data.cities.filter(c=>!c.inset).map(c=>({c,w:Math.max(60,c.label.length*12+14,Math.max(...c.code.split(' / ').map(code=>code.length))*(phone?14:16)*.6+14,plate(c).length*12*.85+14),h:c.code.includes(' / ')?72:54}));
+    return {width,phone,nodes,maxW:Math.max(...nodes.map(n=>n.w)),maxH:Math.max(...nodes.map(n=>n.h)),gap:phone?12:16,pad:10};
+  }
+  function labelFrame(data){
+    const metrics=labelMetrics(data),{width,phone,nodes,maxW,maxH,gap,pad}=metrics;
+    const extra=document.querySelector('#city-map-extras'),reservedTop=extra.hidden?0:Math.ceil(extra.getBoundingClientRect().height)+20;
+    const columns=Math.max(1,Math.floor((width-2*pad+gap)/(maxW+gap))),mapHeight=Math.max(220,Math.min(340,width*.9));
+    const rows=phone?Math.ceil(nodes.length/columns):Math.max(5,Math.ceil((nodes.length-2*columns+4)/2));
+    const canvasHeight=phone?2*pad+reservedTop+rows*(maxH+gap)+mapHeight+2*gap:Math.max(600,2*pad+reservedTop+rows*(maxH+gap));
+    const panel=document.querySelector('.map-panel'),holder=document.querySelector('#map-holder'),chromeHeight=panel.getBoundingClientRect().height-holder.getBoundingClientRect().height;
+    document.querySelector('#map-view').style.setProperty('--city-map-height',Math.ceil(canvasHeight+chromeHeight)+'px');
+    panel.style.removeProperty('--city-map-height');
+    const height=svg.getBoundingClientRect().height,cellW=(width-2*pad)/columns,slots=[];
+    let mapWindow;
+    if(phone){
+      const topRows=Math.ceil(rows/2),topHeight=topRows*(maxH+gap);
+      mapWindow={x:pad,y:pad+reservedTop+topHeight+gap,w:width-2*pad,h:mapHeight};
+      for(let row=0;row<rows;row++)for(let column=0;column<columns;column++)slots.push({x:pad+cellW*(column+.5),y:row<topRows?pad+reservedTop+row*(maxH+gap)+maxH/2:mapWindow.y+mapHeight+gap+(row-topRows)*(maxH+gap)+maxH/2});
+    }else{
+      const actualRows=Math.max(3,Math.floor((height-2*pad-reservedTop+gap)/(maxH+gap))),cellH=(height-2*pad-reservedTop)/actualRows;
+      mapWindow={x:pad+cellW+gap/2,y:pad+reservedTop+cellH+gap/2,w:width-2*pad-2*cellW-gap,h:height-2*pad-reservedTop-2*cellH-gap};
+      for(let row=0;row<actualRows;row++)for(let column=0;column<columns;column++)if(!row||row===actualRows-1||!column||column===columns-1)slots.push({x:pad+cellW*(column+.5),y:pad+reservedTop+cellH*(row+.5)});
     }
-    if(crowded){
-      const maxW=Math.max(...nodes.map(n=>n.w)),maxH=Math.max(...nodes.map(n=>n.h)),columns=Math.max(1,Math.floor((810-2*pad+gap)/(maxW+gap))),cellW=(810-2*pad)/columns,cells=[];
-      for(let y=pad+maxH/2;y+maxH/2<=H-pad;y+=maxH+gap)for(let column=0;column<columns;column++){const x=pad+cellW*(column+.5);if(!(hasInset&&x+maxW/2>810-155*factor&&y-maxH/2<insetHeight))cells.push({x,y});}
-      if(cells.length>=nodes.length){
-        // Minimum-distance matching keeps the geographic ordering while guaranteeing separate slots.
-        const n=nodes.length,m=cells.length,u=Array(n+1).fill(0),v=Array(m+1).fill(0),match=Array(m+1).fill(0),way=Array(m+1).fill(0);
-        for(let i=1;i<=n;i++){
-          match[0]=i;let j0=0;const distances=Array(m+1).fill(Infinity),used=Array(m+1).fill(false);
-          do{used[j0]=true;const i0=match[j0];let delta=Infinity,j1=0;
-            for(let j=1;j<=m;j++)if(!used[j]){const cost=(nodes[i0-1].ax-cells[j-1].x)**2+(nodes[i0-1].ay-cells[j-1].y)**2-u[i0]-v[j];if(cost<distances[j]){distances[j]=cost;way[j]=j0;}if(distances[j]<delta){delta=distances[j];j1=j;}}
-            for(let j=0;j<=m;j++)if(used[j]){u[match[j]]+=delta;v[j]-=delta;}else distances[j]-=delta;
-            j0=j1;
-          }while(match[j0]!==0);
-          do{const j1=way[j0];match[j0]=match[j1];j0=j1;}while(j0!==0);
-        }
-        for(let j=1;j<=m;j++)if(match[j]){nodes[match[j]-1].x=cells[j-1].x;nodes[match[j]-1].y=cells[j-1].y;}
-      }
+    return {...metrics,height,slots,mapWindow};
+  }
+  function layout(data,box,frame){
+    const {width,phone,slots}=frame,factor=810/width,fh=12*factor,fc=(phone?14:16)*factor;
+    const nodes=frame.nodes.map(n=>({...n,ax:(n.c.center[0]-box[0])/box[2]*810,ay:(n.c.center[1]-box[1])/box[2]*810,w:n.w*factor,h:n.h*factor,fh,fc}));
+    const cells=slots.map(p=>({x:p.x*factor,y:p.y*factor}));
+    if(cells.length<nodes.length)throw new Error('Insufficient map label space');
+    // Pair peripheral cards with the nearest city centers without covering the map window.
+    const n=nodes.length,m=cells.length,u=Array(n+1).fill(0),v=Array(m+1).fill(0),match=Array(m+1).fill(0),way=Array(m+1).fill(0);
+    for(let i=1;i<=n;i++){
+      match[0]=i;let j0=0;const distances=Array(m+1).fill(Infinity),used=Array(m+1).fill(false);
+      do{used[j0]=true;const i0=match[j0];let delta=Infinity,j1=0;
+        for(let j=1;j<=m;j++)if(!used[j]){const cost=(nodes[i0-1].ax-cells[j-1].x)**2+(nodes[i0-1].ay-cells[j-1].y)**2-u[i0]-v[j];if(cost<distances[j]){distances[j]=cost;way[j]=j0;}if(distances[j]<delta){delta=distances[j];j1=j;}}
+        for(let j=0;j<=m;j++)if(used[j]){u[match[j]]+=delta;v[j]-=delta;}else distances[j]-=delta;
+        j0=j1;
+      }while(match[j0]!==0);
+      do{const j1=way[j0];match[j0]=match[j1];j0=j1;}while(j0!==0);
     }
+    for(let j=1;j<=m;j++)if(match[j]){nodes[match[j]-1].x=cells[j-1].x;nodes[match[j]-1].y=cells[j-1].y;}
     return nodes;
   }
   function paint(data){
     activeData=data;
-    const actualWidth=Math.max(240,svg.getBoundingClientRect().width),labelCities=data.cities.filter(c=>!c.inset),maxW=Math.max(60,...labelCities.map(c=>Math.max(c.label.length*12+14,plate(c).length*12*.85+14))),maxH=labelCities.some(c=>c.code.includes(' / '))?72:54,columns=Math.max(1,Math.floor((actualWidth-16+5)/(maxW+5))),chromeHeight=document.querySelector('.map-panel').getBoundingClientRect().height-document.querySelector('#map-holder').getBoundingClientRect().height,neededHeight=Math.ceil(labelCities.length/columns)*(maxH+5)+16+chromeHeight+(data.cities.some(c=>c.inset)?Math.ceil((40+data.cities.filter(c=>c.inset).length*52)/(maxH+5))*(maxH+5):0);
-    document.querySelector('.map-panel').style.setProperty('--city-map-height',Math.max(560,neededHeight)+'px');
-    const box=fit(data.bounds),unit=box[2]/810,selected=focusedCity(data)?.id,hasMatch=data.cities.some(matches);
-    cities.innerHTML=`<g class="city-regions">${data.cities.filter(c=>c.path).map(c=>`<path d="${c.path}" class="city-shape ${phoneClass(c.code)} ${selected===c.id?'city-selected':''} ${hasMatch&&!matches(c)?'city-filtered':''}" data-city="${c.id}" aria-hidden="true" tabindex="-1" aria-label="${esc(c.name)} ${c.code} ${esc(plate(c))}"><title>${esc(c.name)} ${c.code} ${esc(plate(c))}${c.note?'；'+esc(c.note):''}${plateNote(c)?'；'+esc(plateNote(c)):''}</title></path>`).join('')}</g><g class="city-label-layer">${layout(data,box).map(n=>{
-      const x=box[0]+n.x*unit,y=box[1]+n.y*unit,ax=n.c.center[0],ay=n.c.center[1],offset=Math.hypot(n.x-n.ax,n.y-n.ay)>12;
-      const codes=n.c.code.split(' / '),multi=codes.length>1,nameY=y-n.fh*(multi?1.75:1.2)*unit,plateY=y+n.fh*(multi?2.5:1.85)*unit;
-      const phoneText=codes.map((code,i)=>`<tspan x="${x}" y="${y+(multi?(i===0?-.2:.95):.35)*n.fc*unit}">${code}</tspan>`).join('');
-      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code} ${esc(plate(n.c))}">${offset?`<line x1="${ax}" y1="${ay}" x2="${x}" y2="${y}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${n.fh*unit}"></rect><text x="${x}" y="${nameY}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.35*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${phoneText}</text><text x="${x}" y="${plateY}" class="city-plate" style="font-size:${n.fh*unit}px">${esc(plate(n.c))}</text></g>`;
-    }).join('')}</g>`;
+    const selected=focusedCity(data)?.id,hasMatch=data.cities.some(matches);
     const extras=data.cities.filter(c=>c.inset),extraBox=document.querySelector('#city-map-extras');
     extraBox.hidden=!extras.length;extraBox.innerHTML=extras.length?`<span class="inset-heading">${data.id===46?'南海岛屿':'底图外补充城市'}</span>${extras.map(c=>`<button data-city="${c.id}" class="${selected===c.id?'active':''}"><span>${c.label}</span><b>${c.code}</b><em class="plate-badge">${esc(plate(c))}</em></button>`).join('')}`:'';
+    const frame=labelFrame(data),box=fit(data.bounds,frame.mapWindow),unit=box[2]/810;
+    svg.dataset.labelLayout=frame.phone?'top-bottom':'perimeter';
+    cities.innerHTML=`<g class="city-regions">${data.cities.filter(c=>c.path).map(c=>`<path d="${c.path}" class="city-shape ${phoneClass(c.code)} ${selected===c.id?'city-selected':''} ${hasMatch&&!matches(c)?'city-filtered':''}" data-city="${c.id}" aria-hidden="true" tabindex="-1" aria-label="${esc(c.name)} ${c.code} ${esc(plate(c))}"><title>${esc(c.name)} ${c.code} ${esc(plate(c))}${c.note?'；'+esc(c.note):''}${plateNote(c)?'；'+esc(plateNote(c)):''}</title></path>`).join('')}</g><g class="city-label-layer">${layout(data,box,frame).map(n=>{
+      const x=box[0]+n.x*unit,y=box[1]+n.y*unit,ax=n.c.center[0],ay=n.c.center[1],offset=Math.hypot(n.x-n.ax,n.y-n.ay)>12;
+      const dx=ax-x,dy=ay-y,edge=1/Math.max(Math.abs(dx)/(n.w*unit/2),Math.abs(dy)/(n.h*unit/2)),lineX=x+dx*edge,lineY=y+dy*edge;
+      const codes=n.c.code.split(' / '),multi=codes.length>1,nameY=y-n.fh*(multi?1.75:1.2)*unit,plateY=y+n.fh*(multi?2.5:1.85)*unit;
+      const phoneText=codes.map((code,i)=>`<tspan x="${x}" y="${y+(multi?(i===0?-.2:.95):.35)*n.fc*unit}">${code}</tspan>`).join('');
+      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code} ${esc(plate(n.c))}">${offset?`<line x1="${ax}" y1="${ay}" x2="${lineX}" y2="${lineY}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${n.fh*unit}"></rect><text x="${x}" y="${nameY}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.35*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${phoneText}</text><text x="${x}" y="${plateY}" class="city-plate" style="font-size:${n.fh*unit}px">${esc(plate(n.c))}</text></g>`;
+    }).join('')}</g>`;
+    const leaders=document.createElementNS('http://www.w3.org/2000/svg','g');leaders.classList.add('city-leaders');leaders.setAttribute('aria-hidden','true');
+    cities.querySelectorAll('.city-label').forEach(label=>{const group=document.createElementNS(leaders.namespaceURI,'g');group.classList.toggle('city-selected',label.classList.contains('city-selected'));group.classList.toggle('city-filtered',label.classList.contains('city-filtered'));label.querySelectorAll('line,circle').forEach(e=>group.append(e));leaders.append(group);});
+    cities.insertBefore(leaders,cities.querySelector('.city-label-layer'));
     svg.setAttribute('aria-label',`${data.name}城市电话区号地图`);
     renderDetail(state);
     return box;
@@ -148,7 +167,8 @@
     load(state.province).then(data=>{
       if(token!==request||state.mapZoom!=='province'||state.view!=='map'||data.id!==state.province)return;
       const box=paint(data);status.hidden=true;fly(box);
-    }).catch(()=>{
+    }).catch(error=>{
+      console.error('City map render failed',error);
       if(token!==request)return;
       status.innerHTML='城市地图暂未载入 <button data-map-retry="true">重试</button>';
       document.querySelector('#detail').innerHTML=`<h2>${pName()}</h2><p class="detail-empty">城市地图暂未载入。</p><button class="outline" data-map-retry="true">重试</button>`;

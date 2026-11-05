@@ -1,6 +1,6 @@
 /* Blue regional plate prefixes; phone numbers retain their area-code colors. */
-.plate-badge{display:inline-block;font:500 14px/1.5 var(--font-body);font-style:normal;color:#285884;background:#eaf1f8;border:1px solid #cedde9;border-radius:999px;padding:3px 9px;white-space:normal;overflow-wrap:anywhere}
-.province-abbr{display:inline-grid;place-items:center;width:38px;height:38px;flex-shrink:0;font-size:18px;font-style:normal;font-weight:500;color:var(--accent);background:var(--accent-soft);border:1px solid #c6d3c0;border-radius:50%}
-.city-label .city-plate{fill:#285884;font-weight:500}.city-index-row>.plate-badge{font-size:13px;justify-self:end;max-width:106px;text-align:center}.table-wrap .plate-badge{margin:2px 0;font-size:15px;white-space:nowrap}
-@media(max-width:600px){.province-abbr{width:32px;height:32px;font-size:16px}.city-index-row>.plate-badge{font-size:14px}.table-wrap .plate-badge{font-size:11px;padding:2px 5px}}
+.plate-badge{display:inline-block;font:500 14px/1.5 var(--font-body);font-style:normal;color:var(--plate);background:var(--plate-soft);border:1px solid var(--plate-border);border-radius:999px;padding:3px 9px;white-space:normal;overflow-wrap:anywhere}
+.province-abbr{display:inline-grid;place-items:center;width:38px;height:38px;flex-shrink:0;font-size:18px;font-style:normal;font-weight:500;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:50%}
+.city-label .city-plate{fill:var(--plate);font-weight:500}.city-index-row>.plate-badge{font-size:14px;justify-self:end;max-width:106px;text-align:center}.table-wrap .plate-badge{margin:2px 0;font-size:14px;white-space:nowrap}
+@media(max-width:600px){.province-abbr{width:32px;height:32px;font-size:16px}.city-index-row>.plate-badge{font-size:14px}.table-wrap .plate-badge{font-size:14px;padding:2px 5px}}
 @media print{.plate-badge{print-color-adjust:exact;-webkit-print-color-adjust:exact;font-size:10px}.table-wrap .plate-badge{font-size:10px}.province-abbr{width:28px;height:28px;font-size:14px}}

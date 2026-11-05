@@ -77,7 +77,7 @@
       mapWindow={x:pad+cellW+gap/2,y:pad+reservedTop+cellH+gap/2,w:width-2*pad-2*cellW-gap,h:height-2*pad-reservedTop-2*cellH-gap};
       for(let row=0;row<actualRows;row++)for(let column=0;column<columns;column++)if(!row||row===actualRows-1||!column||column===columns-1)slots.push({x:pad+cellW*(column+.5),y:pad+reservedTop+cellH*(row+.5)});
     }
-    return {...metrics,height,slots,mapWindow};
+    return {...metrics,height,slots,mapWindow,reservedTop};
   }
   function layout(data,box,frame){
     const {width,phone,slots}=frame,factor=810/width,fh=12*factor,fc=(phone?14:16)*factor;
@@ -96,6 +96,29 @@
       do{const j1=way[j0];match[j0]=match[j1];j0=j1;}while(j0!==0);
     }
     for(let j=1;j<=m;j++)if(match[j]){nodes[match[j]-1].x=cells[j-1].x;nodes[match[j]-1].y=cells[j-1].y;}
+    const fallback=nodes.map(n=>({x:n.x,y:n.y})),placed=[],pad=10*factor,gap=10*factor,H=frame.height*factor;
+    const geometry=document.createElementNS('http://www.w3.org/2000/svg','g');geometry.setAttribute('opacity','0');geometry.setAttribute('pointer-events','none');svg.append(geometry);
+    const paths=new Map(data.cities.filter(c=>c.path&&!c.inset).map(c=>{const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',c.path);geometry.append(path);return [c.id,path];}));
+    const point=(x,y)=>new DOMPoint(box[0]+x/810*box[2],box[1]+y/810*box[2]);
+    const samples=(n,x,y)=>[-.5,0,.5].flatMap(dx=>[-.5,0,.5].map(dy=>point(x+dx*n.w,y+dy*n.h)));
+    const fits=(n,x,y)=>x-n.w/2>=pad&&x+n.w/2<=810-pad&&y-n.h/2>=pad&&y+n.h/2<=H-pad&&!placed.some(p=>Math.abs(x-p.x)<(n.w+p.w)/2+gap&&Math.abs(y-p.y)<(n.h+p.h)/2+gap)&&!(frame.reservedTop&&y-n.h/2<(frame.reservedTop+10)*factor);
+    const inside=(n,x,y)=>samples(n,x,y).every(p=>paths.get(n.c.id)?.isPointInFill(p));
+    const outside=(n,x,y)=>samples(n,x,y).every(p=>![...paths.values()].some(path=>path.isPointInFill(p)))&&!nodes.some(p=>Math.abs(x-p.ax)<n.w/2+gap&&Math.abs(y-p.ay)<n.h/2+gap);
+    // Keep spacious city labels in their own region; move only the remaining labels to nearby blank space.
+    const spacious=nodes.slice().sort((a,b)=>{const area=n=>{const path=paths.get(n.c.id);if(!path)return 0;const bounds=path.getBBox();return bounds.width*bounds.height;};return area(b)-area(a);});
+    for(const n of spacious){let position=null;for(let radius=0;radius<=36*factor&&!position;radius+=12*factor)for(let a=0;a<16&&!position;a++){const x=n.ax+Math.cos(a*Math.PI/8)*radius,y=n.ay+Math.sin(a*Math.PI/8)*radius;if(fits(n,x,y)&&inside(n,x,y))position={x,y};}if(position){n.x=position.x;n.y=position.y;n.internal=true;placed.push(n);}}
+    let complete=true;
+    for(const n of nodes.filter(n=>!n.internal)){
+      let best=null;
+      for(let radius=16*factor;radius<Math.max(810,H);radius+=12*factor){
+        for(let angle=0;angle<32;angle++){const theta=angle*Math.PI/16,x=n.ax+Math.cos(theta)*radius,y=n.ay+Math.sin(theta)*radius;if(fits(n,x,y)&&outside(n,x,y)){const score=(x-n.ax)**2+(y-n.ay)**2;if(!best||score<best.score)best={x,y,score};}}
+        if(best)break;
+      }
+      if(!best){const candidates=cells.filter(p=>fits(n,p.x,p.y)&&outside(n,p.x,p.y)).sort((a,b)=>(a.x-n.ax)**2+(a.y-n.ay)**2-((b.x-n.ax)**2+(b.y-n.ay)**2));best=candidates[0];}
+      if(!best){complete=false;break;}n.x=best.x;n.y=best.y;placed.push(n);
+    }
+    geometry.remove();
+    if(!complete)nodes.forEach((n,i)=>{n.x=fallback[i].x;n.y=fallback[i].y;n.internal=false;});
     return nodes;
   }
   function paint(data){
@@ -104,13 +127,13 @@
     const extras=data.cities.filter(c=>c.inset),extraBox=document.querySelector('#city-map-extras');
     extraBox.hidden=!extras.length;extraBox.innerHTML=extras.length?`<span class="inset-heading">${data.id===46?'南海岛屿':'底图外补充城市'}</span>${extras.map(c=>`<button data-city="${c.id}" class="${selected===c.id?'active':''}"><span>${c.label}</span><b>${c.code}</b><em class="plate-badge">${esc(plate(c))}</em></button>`).join('')}`:'';
     const frame=labelFrame(data),box=fit(data.bounds,frame.mapWindow),unit=box[2]/810;
-    svg.dataset.labelLayout=frame.phone?'top-bottom':'perimeter';
+    svg.dataset.labelLayout='hybrid';
     cities.innerHTML=`<g class="city-regions">${data.cities.filter(c=>c.path).map(c=>`<path d="${c.path}" class="city-shape ${phoneClass(c.code)} ${selected===c.id?'city-selected':''} ${hasMatch&&!matches(c)?'city-filtered':''}" data-city="${c.id}" aria-hidden="true" tabindex="-1" aria-label="${esc(c.name)} ${c.code} ${esc(plate(c))}"><title>${esc(c.name)} ${c.code} ${esc(plate(c))}${c.note?'；'+esc(c.note):''}${plateNote(c)?'；'+esc(plateNote(c)):''}</title></path>`).join('')}</g><g class="city-label-layer">${layout(data,box,frame).map(n=>{
       const x=box[0]+n.x*unit,y=box[1]+n.y*unit,ax=n.c.center[0],ay=n.c.center[1],offset=Math.hypot(n.x-n.ax,n.y-n.ay)>12;
       const dx=ax-x,dy=ay-y,edge=1/Math.max(Math.abs(dx)/(n.w*unit/2),Math.abs(dy)/(n.h*unit/2)),lineX=x+dx*edge,lineY=y+dy*edge;
       const codes=n.c.code.split(' / '),multi=codes.length>1,nameY=y-n.fh*(multi?1.75:1.2)*unit,plateY=y+n.fh*(multi?2.5:1.85)*unit;
       const phoneText=codes.map((code,i)=>`<tspan x="${x}" y="${y+(multi?(i===0?-.2:.95):.35)*n.fc*unit}">${code}</tspan>`).join('');
-      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code} ${esc(plate(n.c))}">${offset?`<line x1="${ax}" y1="${ay}" x2="${lineX}" y2="${lineY}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${n.fh*unit}"></rect><text x="${x}" y="${nameY}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.35*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${phoneText}</text><text x="${x}" y="${plateY}" class="city-plate" style="font-size:${n.fh*unit}px">${esc(plate(n.c))}</text></g>`;
+      return `<g class="city-label ${phoneClass(n.c.code)} ${selected===n.c.id?'city-selected':''} ${hasMatch&&!matches(n.c)?'city-filtered':''}" data-city="${n.c.id}" data-placement="${n.internal?'inside':'outside'}" role="button" tabindex="0" aria-label="${esc(n.c.name)} ${n.c.code} ${esc(plate(n.c))}">${offset?`<line x1="${ax}" y1="${ay}" x2="${lineX}" y2="${lineY}" vector-effect="non-scaling-stroke"></line><circle cx="${ax}" cy="${ay}" r="${1.5*n.fh/12*unit}"></circle>`:''}<rect x="${x-n.w*unit/2}" y="${y-n.h*unit/2}" width="${n.w*unit}" height="${n.h*unit}" rx="${n.fh*unit}"></rect><text x="${x}" y="${nameY}" style="font-size:${n.fh*unit}px">${esc(n.c.label)}</text><text x="${x}" y="${y+n.fc*.35*unit}" class="city-phone" style="font-size:${n.fc*unit}px">${phoneText}</text><text x="${x}" y="${plateY}" class="city-plate" style="font-size:${n.fh*unit}px">${esc(plate(n.c))}</text></g>`;
     }).join('')}</g>`;
     const leaders=document.createElementNS('http://www.w3.org/2000/svg','g');leaders.classList.add('city-leaders');leaders.setAttribute('aria-hidden','true');
     cities.querySelectorAll('.city-label').forEach(label=>{const group=document.createElementNS(leaders.namespaceURI,'g');group.classList.toggle('city-selected',label.classList.contains('city-selected'));group.classList.toggle('city-filtered',label.classList.contains('city-filtered'));label.querySelectorAll('line,circle').forEach(e=>group.append(e));leaders.append(group);});

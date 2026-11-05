@@ -18,11 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check site resources
+        run: python scripts/check_site.py
       - uses: actions/configure-pages@v5
       - name: Prepare static website
         run: |
           mkdir _site
-          cp index.html styles.css reader.css app.js data.js photos.js scenes.js gallery.js panorama-data.js panoramas.js courses.js CREDITS.md _site/
+          cp index.html site.css site.js home.css home.js styles.css reader.css app.js data.js photos.js scenes.js gallery.js panorama-data.js panoramas.js courses.js CREDITS.md _site/
+          cp -r canada china _site/
           cp -r assets _site/assets
           cp -r designs _site/designs
       - uses: actions/upload-pages-artifact@v3

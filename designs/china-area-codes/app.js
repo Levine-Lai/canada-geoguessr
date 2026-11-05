@@ -16,7 +16,7 @@
     ['map','table'].forEach(v=>$(`#${v}-view`).hidden=v!==state.view);
     $('#main').dataset.currentView=state.view;
     const g=groups.find(g=>g.id===state.prefix), ps=visibleProvinces();
-    $('#focus-band').innerHTML=`<span class="focus-number">${g?g.id:'全'}</span><div class="focus-copy"><h2>${g?esc(g.title):'01—09 · 全国区号'}</h2><p>${state.query?`搜索「${esc(state.query)}」 · `:''}${g?esc(g.memory):'03 华北 · 04 东北 · 05 华东 · 07 中南 · 08 西南 · 09 西北'}</p></div><span class="focus-count">${ps.length} 省份 / ${countCodes(ps)} 区号</span>`;
+    $('#focus-band').innerHTML=`<span class="focus-number">${g?g.id:'全'}</span><div class="focus-copy"><h2>${g?esc(g.title):'全国区号'}</h2>${g||state.query?`<p>${state.query?'搜索「'+esc(state.query)+'」':''}${g?(state.query?' · ':'')+esc(g.memory):''}</p>`:''}</div><span class="focus-count">${ps.length} 省份 / ${countCodes(ps)} 区号</span>`;
   }
   const mapOverrides={11:[466,183],12:[501,220],13:[439,222],14:[414,254],31:[571,325],32:[507,290],34:[481,332],35:[510,399],36:[471,377],37:[488,255],50:[381,347],62:[321,242],64:[358,249],46:[408,501]};
   const extras=[
@@ -30,12 +30,13 @@
   ];
   function project([lon,lat]){const p=window.AREA_MAP.projection,r=Math.PI/180,rho=Math.sqrt(p.c-2*p.n*Math.sin(lat*r))/p.n,theta=p.n*(lon-105)*r;return [(rho*Math.sin(theta)-p.minx)*p.scale+22,(p.maxy-(p.rho0-rho*Math.cos(theta)))*p.scale+15];}
   function renderMap(){
+    const compact=matchMedia('(max-width:600px)').matches;
     const ids=new Set(visibleProvinces().map(p=>p.id));
     const paths=window.AREA_MAP.features.map(f=>{
       const p=provinces.find(p=>p.id===f.id), active=ids.has(f.id), pos=mapOverrides[f.id]||f.center;
-      const label=p?p.name+'·'+plates.abbreviation(p.id):f.name.replace(/省|特别行政区/g,'');
-      const subtitle=p?(state.prefix==='06'?'06 + '+p.main:p.main):'';
-      return `<g class="${active||!p?'':'faded'}"><path d="${f.path}" class="province-shape ${state.province===f.id?'selected':''}" style="fill:${p?groupColor(p.main):'var(--neutral)'}" ${p?`role="button" tabindex="0" data-province="${p.id}" aria-label="${esc(p.name)}，${esc(p.pattern)}"`:''}><title>${esc(label)} ${p?esc(p.pattern):'独立编号体系'}</title></path>${label&&f.id!==81&&f.id!==82&&(active||state.prefix==='all')?`${[11,12,31].includes(f.id)?`<line x1="${f.center[0]}" y1="${f.center[1]}" x2="${pos[0]}" y2="${pos[1]}" stroke="var(--muted)" stroke-width=".5"></line>`:''}<text x="${pos[0]}" y="${pos[1]}" class="province-label" ${p?`data-province="${p.id}" role="button" tabindex="-1" aria-label="放大${esc(p.name)}"`:''}>${esc(label)}${subtitle?`<tspan x="${pos[0]}" dy="15">${subtitle}</tspan>`:''}</text>`:''}</g>`;
+      const label=p?(compact?plates.abbreviation(p.id):p.name):f.name.replace(/省|特别行政区/g,'');
+      const subtitle=p&&!compact?(state.prefix==='06'?'06 + '+p.main:p.main):'';
+      return `<g class="${active||!p?'':'faded'}"><path d="${f.path}" class="province-shape ${state.province===f.id?'selected':''}" style="fill:${p?groupColor(p.main):'var(--neutral)'}" ${p?`role="button" tabindex="0" data-province="${p.id}" aria-label="${esc(p.name)}，${esc(p.pattern)}"`:''}><title>${esc(label)} ${p?esc(p.pattern):'独立编号体系'}</title></path>${label&&f.id!==81&&f.id!==82&&(active||state.prefix==='all')?`${[11,12,31].includes(f.id)?`<line x1="${f.center[0]}" y1="${f.center[1]}" x2="${pos[0]}" y2="${pos[1]}" stroke="var(--muted)" stroke-width=".5"></line>`:''}<text x="${pos[0]}" y="${pos[1]}" class="province-label" style="font-size:${compact?30:14}px" ${p?`data-province="${p.id}" role="button" tabindex="-1" aria-label="放大${esc(p.name)}"`:''}>${esc(label)}${subtitle?`<tspan x="${pos[0]}" dy="15">${subtitle}</tspan>`:''}</text>`:''}</g>`;
     }).join('');
     const markers=[...extras.map(d=>[...d,'extra']),...specials.map(d=>[...d,'special'])].filter(([id,city,code])=>(state.prefix==='all'||code.startsWith(state.prefix))&&plates.matches(provinces.find(p=>p.id===id),{city,code},state.query)).map(([id,city,code,ll,dx,dy,type])=>{
       const [x,y]=project(ll),showLabel=state.prefix!=='all'||state.query;
@@ -69,7 +70,8 @@
   });
   document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('svg [role="button"]')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}if(e.key==='/'&&!e.target.matches('input,textarea')){e.preventDefault();$('#search').focus();}});
   $('#search').addEventListener('input',e=>{state.query=e.target.value.trim();render();});
-  document.addEventListener('change',e=>{if(e.target.id==='province-select'){state.province=Number(e.target.value);state.mapZoom='province';state.mapCity=null;if(!visibleProvinces().some(p=>p.id===state.province)){state.prefix='all';state.query='';$('#search').value='';}render();}});
+  document.addEventListener('change',e=>{if(['province-select','map-province-select'].includes(e.target.id)&&e.target.value){state.province=Number(e.target.value);state.mapZoom='province';state.mapCity=null;if(!visibleProvinces().some(p=>p.id===state.province)){state.prefix='all';state.query='';$('#search').value='';}render();}});
+  matchMedia('(max-width:600px)').addEventListener('change',()=>{if(state.view==='map')renderMap();});
   $('#print').addEventListener('click',()=>window.print());
   const q=new URLSearchParams(location.search);if(['map','table'].includes(q.get('view')))state.view=q.get('view');else if(q.has('province'))state.view='map';if(groups.some(g=>g.id===q.get('prefix')))state.prefix=q.get('prefix');if(provinces.some(p=>p.id===Number(q.get('province'))))state.province=Number(q.get('province'));state.query=q.get('q')||'';$('#search').value=state.query;
   if(state.view==='map')state.mapZoom=['country','province'].includes(q.get('zoom'))?q.get('zoom'):q.has('province')?'province':'country';

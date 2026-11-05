@@ -1,0 +1,36 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "knowledge-home": {
+      "versions": [
+        {
+          "path": "index.html",
+          "createdAt": "2026-11-05T08:54:16.336Z",
+          "status": "needs-review"
+        }
+      ]
+    },
+    "canada": {
+      "versions": [
+        {
+          "path": "canada/index.html",
+          "createdAt": "2026-11-05T08:54:16.449Z",
+          "status": "needs-review"
+        }
+      ]
+    },
+    "china": {
+      "versions": [
+        {
+          "path": "china/index.html",
+          "createdAt": "2026-11-05T08:54:16.541Z",
+          "status": "needs-review"
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-11-05T08:54:16.337Z",
+  "updatedAt": "2026-11-05T08:54:16.543Z"
+}

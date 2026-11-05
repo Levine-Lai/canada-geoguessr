@@ -1,6 +1,6 @@
 let sceneCategory='全部',sceneRegion='全部',sceneQuery='',activePhoto=null,lastPhotoTrigger=null,photoAlbum=[];
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const photoFor=id=>PHOTOS.find(p=>p.id===id);
+const photoFor=id=>{const photo=PHOTOS.find(p=>p.id===id);return photo?{...photo,file:window.KB?KB.url(photo.file):photo.file}:photo;};
 const sceneRegionName=id=>REGIONS.find(r=>r.id===id).name;
 const SCENE_CAPTIONS={
 'bc-coast':'沿山脚与海湾展开的公路，把陡坡、针叶林与海水放在一起记。','bc-dry':'干燥山坡与规则的绿色种植区形成对照，帮助区分 BC 内陆与湿润海岸。','ab-mountain':'道路沿高山谷地延伸，针叶林与山体共同构成阿省西部的印象。','ab-prairie':'低矮林木与平缓地形，呈现阿省北部不同于南部草原的环境。','sk-road':'长直道路、农田与远处树带，共同呈现萨省乡间环境。','sk-grain':'高大的储粮设施与开阔农场，说明当地农业生产的土地用途。','mb-road':'Falcon Lake 125、Kenora 191 是目的地信息，拍摄点仍在曼省。','on-shield':'道路在基岩中切出通道，岩壁与林木提示加拿大地盾环境。','on-farm':'南部安省的农田和树带，和中北部地盾森林形成对照。','qc-stop':'牌面明确写着法语 ARRÊT，结合其他法语文字形成更完整的区域印象。','qc-stairs':'上层入口、外楼梯与连续街屋，呈现蒙特利尔 Plateau 的具体街区形态。','nb-bilingual':'同一公路名称的英法两行文字，可与具体路线和城镇名称一起阅读。','ns-coast':'海岸与明显起伏共同出现，体现布雷顿角高地的地形。','ns-town':'彩色临街房屋、屋顶与道路坡度，组成 Lunenburg 的街区印象。','pei-road':'红色土路、农业用地与树带组合，比单看土色更有辨识度。','nl-town':'Trinity East 的一处传统建筑，用屋顶、立面和院落建立具体视觉记忆。','yt-road':'北方公路、低矮植被与远处山体，共同呈现 Tombstone 一带环境。','nt-town':'店招、低矮建筑与街道尺度，帮助记住 Yellowknife Old Town 的具体街景。','nu-town':'伊魁特的具体城市建筑与周围地表，补充对北极聚落的认识。'

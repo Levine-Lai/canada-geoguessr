@@ -7,6 +7,7 @@
 - `/`：知识目录、跨专题搜索、学习入口。
 - `/canada/`：13 个省与地区的图册、全国地图、26 个 Google 街景观察点、19 张实拍照片、17 条识别线索与参考资料。
 - `/china/`：中国大陆电话区号地图、城市车牌与四列对照表。31 个省级行政区、452 个城市/地区/区县单位、320 个去重电话区号。直辖市按区县展示，但不把车牌字母分配给区县。
+- `/review/`：将图寻已结束对局的本人答题记录汇总到一张地图。按地区、模式和距离筛选，查看地区中位误差与逐题轨迹。
 
 加拿大章节使用 `/canada/#study/BC/panorama`、`geography`、`meta`、`scenes`、`memory` 等链接。旧首页 `#study/...` 等链接自动转到加拿大页面。原 `designs/china-area-codes/` 链接跳转到 `/china/`，保留查询参数和省市选择。
 
@@ -14,7 +15,7 @@
 
 在仓库根目录运行 `python -m http.server 4311`，访问 `http://localhost:4311/`。
 
-`python scripts/check_site.py` 检查入口、站内资源、图片与 HTML 标识。JavaScript 使用 `node --check <文件>` 检查语法。GitHub Actions 在 main 推送后先运行资源检查，再复制主页、`canada/`、`china/`、`assets/` 和 `designs/` 等静态文件发布。部署配置为 `.github/workflows/pages.yml`。
+`python scripts/check_site.py` 检查入口、站内资源、图片与 HTML 标识。JavaScript 使用 `node --check <文件>` 检查语法。GitHub Actions 在 main 推送后先运行资源检查，再复制主页、`canada/`、`china/`、`review/`、`assets/` 和 `designs/` 等静态文件发布。部署配置为 `.github/workflows/pages.yml`。
 
 ## 设计与组织
 
@@ -33,3 +34,9 @@
 Google 街景使用 Google Maps 分享嵌入，由原站提供；3D 地形通过同位置链接打开 Google Earth。需要能访问 Google，影像时间以画面为准；参考照片与街景机位不同。选点参考 Plonk It Canada。来源、作者、拍摄日期和许可在各图详情中展示，完整照片署名见 `CREDITS.md`。
 
 加拿大地图边界来自 Click That ’Hood / OpenStreetMap，为较旧的简化数据，仅用于学习定位。© OpenStreetMap contributors（ODbL）。中国省市地图来源、电话区号调整与车牌口径详见专题页面的“口径与来源”和 `designs/china-area-codes/README.md`。
+
+## 图寻复盘导入
+
+在复盘页安装 Tampermonkey 导入脚本。Chrome 或 Edge 若提示需要允许用户脚本，在 Tampermonkey 的扩展详情里开启「允许用户脚本」。在已登录的 `tuxun.fun` 使用「复盘导入」，可以读取最近对局、全部可读取历史，或粘贴复盘链接。批量读取范围以图寻历史接口返回为准，按对局、玩家与轮次去重。导入只请求图寻的账号、历史和复盘读取接口。脚本将本人的坐标与回合元数据传给复盘页，复盘页用浏览器 IndexedDB 保存，支持 JSON 备份迁移。
+
+世界地图使用 [Natural Earth 1:50m Admin 0 Countries v5.1.2](https://github.com/nvkelso/natural-earth-vector/tree/v5.1.2/geojson) 的几何和简化字段（公有领域），中国省级边界复用中国专题底图。[Leaflet 1.9.4](https://leafletjs.com/) 随站点分发，许可见 `review/vendor/leaflet-LICENSE.txt`。

@@ -4,7 +4,7 @@ from urllib.parse import urlsplit, unquote
 import re
 
 root=Path('.').resolve()
-pages=[Path('index.html'),Path('canada/index.html'),Path('china/index.html'),Path('designs/china-area-codes/index.html')]
+pages=[Path('index.html'),Path('canada/index.html'),Path('china/index.html'),Path('review/index.html'),Path('designs/china-area-codes/index.html')]
 errors=[];assets=set();links=0
 class Inspect(HTMLParser):
     def __init__(self,page):super().__init__();self.page=page;self.ids=set();self.h1=0
@@ -29,7 +29,7 @@ for page in pages:
 photo_text=Path('photos.js').read_text(encoding='utf-8')
 for photo in re.findall(r'"file":\s*"([^\"]+)"',photo_text):
     if not Path(photo).is_file():errors.append('Missing photo '+photo)
-for path in ['site.css','home.css','reader.css','designs/china-area-codes/style.css','designs/china-area-codes/city-map.css']:
+for path in ['site.css','home.css','reader.css','review/review.css','designs/china-area-codes/style.css','designs/china-area-codes/city-map.css']:
     css=Path(path).read_text(encoding='utf-8')
     if css.count('{')!=css.count('}'):errors.append('Unbalanced stylesheet '+path)
 assert not errors, '\n'.join(errors)

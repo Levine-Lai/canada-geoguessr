@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ee">
+  <title>图寻复盘 · 图寻知识库</title>
+  <link rel="icon" type="image/png" href="../assets/brand/favicon-32.png">
+  <link rel="stylesheet" href="../site.css">
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="review.css">
+  <script src="vendor/leaflet.js" defer></script>
+  <script src="data.js" defer></script>
+  <script src="map.js" defer></script>
+  <script src="review.js" defer></script>
+</head>
+<body class="kb-layout review-page">
+  <header class="review-top">
+    <a class="review-brand" href="../"><img src="../assets/brand/logo-128.png" width="36" height="36" alt="">图寻知识库</a>
+    <a href="https://tuxun.fun/" target="_blank" rel="noreferrer">去图寻 ↗</a>
+  </header>
+  <main class="review-main">
+    <div class="review-heading">
+      <div><h1>图寻复盘</h1><p id="dataset-label">本机还没有复盘记录</p></div>
+      <button class="kb-button" id="open-import" type="button">＋ 导入记录</button>
+    </div>
+    <p id="notice" class="review-notice" role="status" hidden></p>
+
+    <dl class="review-stats" aria-label="当前筛选统计">
+      <div><dt>已答题目</dt><dd id="stat-count">—</dd></div>
+      <div><dt>覆盖地区</dt><dd id="stat-regions">—</dd></div>
+      <div><dt>中位误差</dt><dd id="stat-median">—</dd></div>
+      <div><dt>100 km 内命中</dt><dd id="stat-close">—</dd></div>
+    </dl>
+
+    <div class="review-filters" id="filters">
+      <label>地区<select id="region-filter"><option value="">全部地区</option></select></label>
+      <label>模式<select id="mode-filter"><option value="">全部模式</option></select></label>
+      <label>误差<select id="range-filter">
+        <option value="">不限距离</option><option value="close">100 km 内</option>
+        <option value="medium">100–1,000 km</option><option value="far">超过 1,000 km</option>
+      </select></label>
+      <button type="button" class="review-text-button" id="reset-filters" hidden>重置筛选</button>
+    </div>
+
+    <div class="review-workspace">
+      <section class="review-panel map-panel" aria-labelledby="map-title">
+        <div class="panel-heading">
+          <h2 id="map-title">答题地图</h2>
+          <div class="map-actions">
+            <label><input id="show-lines" type="checkbox"> 显示猜测轨迹</label>
+            <button class="review-text-button" id="fit-map" type="button">定位全部</button>
+          </div>
+        </div>
+        <div id="review-map" aria-label="答题地图"></div>
+        <div class="map-empty" id="map-empty">
+          <strong id="map-empty-title">地图上还没有答题记录</strong>
+          <button class="review-text-button" type="button" id="demo-button">查看示例</button>
+        </div>
+        <div class="map-legend" aria-label="地图图例">
+          <span><i class="dot close"></i>≤100 km</span>
+          <span><i class="dot medium"></i>100–1,000 km</span>
+          <span><i class="dot far"></i>&gt;1,000 km</span>
+          <span><i class="guess-dot"></i>猜测点</span>
+        </div>
+      </section>
+      <section class="review-panel region-panel" aria-labelledby="regions-title">
+        <div class="panel-heading"><h2 id="regions-title">地区表现</h2></div>
+        <div class="region-controls">
+          <button id="weak-first" type="button" aria-pressed="true">优先复习</button>
+          <button id="strong-first" type="button" aria-pressed="false">表现较好</button>
+        </div>
+        <p class="region-caption">按中位误差排序，至少 3 题参与排名</p>
+        <div id="region-list" class="region-list"></div>
+      </section>
+    </div>
+
+    <section class="review-panel round-panel" aria-labelledby="rounds-title">
+      <div class="panel-heading">
+        <h2 id="rounds-title">逐题复盘 <span id="round-count"></span></h2>
+        <label class="sort-label">排序<select id="sort-rounds">
+          <option value="worst">误差最大</option><option value="best">误差最小</option><option value="latest">最近答题</option>
+        </select></label>
+      </div>
+      <div id="round-detail" class="round-detail" hidden></div>
+      <div id="round-list" class="round-list"></div>
+      <div class="round-pages" id="round-pages" hidden>
+        <button type="button" class="kb-button secondary" id="prev-page">上一页</button>
+        <span id="page-number"></span>
+        <button type="button" class="kb-button secondary" id="next-page">下一页</button>
+      </div>
+    </section>
+
+    <footer class="review-footer">
+      <details>
+        <summary>统计口径与地图来源</summary>
+        <p>误差按两点的大圆距离计算。地区按真实点归类，中国按省级地区统计。地区边界为简化数据，边界和小岛附近可能无法归类。只统计有有效猜测坐标的回合。</p>
+        <p>世界底图 <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">Natural Earth</a> · <a href="../designs/china-area-codes/README.md">中国底图来源</a></p>
+      </details>
+      <div><button class="review-text-button" type="button" id="export-data" hidden>导出备份</button><button class="review-text-button" type="button" id="clear-data" hidden>清空记录</button></div>
+    </footer>
+  </main>
+
+  <dialog id="import-dialog" aria-labelledby="import-title">
+    <div class="panel-heading"><h2 id="import-title">导入图寻记录</h2><form method="dialog"><button type="submit" class="review-text-button" aria-label="关闭导入">关闭</button></form></div>
+    <ol class="import-steps">
+      <li>在电脑浏览器安装 <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Tampermonkey</a>，再<a href="tuxun-review.user.js">安装导入脚本</a>。</li>
+      <li>打开已登录的 <a href="https://tuxun.fun/" target="_blank" rel="noreferrer">图寻</a>，点击右下角「复盘导入」。</li>
+      <li>选择导入范围，完成后点「打开复盘地图」。</li>
+    </ol>
+    <div class="file-import">
+      <label for="import-file">已有复盘备份</label>
+      <input id="import-file" type="file" accept=".json,application/json">
+      <p>记录保存在当前浏览器。换设备可用 JSON 备份迁移。</p>
+    </div>
+  </dialog>
+  <dialog id="clear-dialog" aria-labelledby="clear-title">
+    <div class="panel-heading"><h2 id="clear-title">清空本机记录？</h2></div>
+    <p>清空后可以从备份或图寻重新导入。</p>
+    <form method="dialog" class="dialog-actions">
+      <button class="kb-button secondary" value="cancel">取消</button>
+      <button class="kb-button" value="clear">确认清空</button>
+    </form>
+  </dialog>
+</body>
+</html>

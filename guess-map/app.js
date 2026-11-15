@@ -86,10 +86,10 @@ function redraw() {
     link.className = "round";
     link.title = "在图寻打开该回合街景";
     $("rounds").append(link);
-    const popup = outside(label + " · 打开原始街景 ↗", replay(row));
+    const openReplay = () => window.open(replay(row), "_blank", "noopener,noreferrer");
     L.marker(row.guess, {
-      title:label, icon:L.divIcon({ className:"pin", html:String(row.round), iconSize:[24,24], iconAnchor:[12,12] })
-    }).bindPopup(popup).addTo(pins);
+      title:label + " · 打开原始街景", icon:L.divIcon({ className:"pin", html:String(row.round), iconSize:[24,24], iconAnchor:[12,12] })
+    }).bindTooltip(label).on("click", openReplay).addTo(pins);
     if (!$("answers").checked) continue;
     L.circleMarker(row.truth, { radius:5, color:"#fff", weight:2, fillColor:"#23a276", fillOpacity:1 })
       .bindPopup(outside("真实位置 · 打开原始街景 ↗", replay(row))).addTo(answers);

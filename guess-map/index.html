@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图寻落点地图</title>
+<link rel="stylesheet" href="../review/vendor/leaflet.css">
+<link rel="stylesheet" href="map.css">
+<script defer src="../review/vendor/leaflet.js"></script>
+<script defer src="../review/data.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<header>
+  <h1>图寻落点地图</h1>
+  <div class="tools"><button id="fit">全部落点</button><button id="import" class="primary">导入对局</button></div>
+</header>
+<main>
+  <div id="map" aria-label="历史落点地图"></div>
+  <aside aria-label="对局和回合">
+    <label for="games">对局</label>
+    <select id="games"><option value="">全部对局</option></select>
+    <div class="summary"><strong id="count">0 个猜测</strong><button id="remove" hidden>删除这局</button></div>
+    <label class="toggle"><input id="answers" type="checkbox" checked> 显示答案与误差线</label>
+    <div id="rounds"></div>
+    <p id="empty">导入历史对局，在同一张地图查看你的猜测。</p>
+  </aside>
+</main>
+<div id="feedback" role="status"></div>
+<dialog id="importer">
+  <form id="import-form">
+    <h2>导入图寻对局</h2>
+    <ol>
+      <li>登录图寻，<a id="history" target="_blank" rel="noreferrer">打开历史数据</a>，复制页面全部内容并粘贴。</li>
+      <li>从下方历史列表打开要导入的对局数据，复制页面全部内容并粘贴。也支持导入已有的复盘 JSON 备份。</li>
+    </ol>
+    <label for="user-id">图寻用户 ID</label>
+    <input id="user-id" type="text" inputmode="numeric" pattern="[0-9]+" value="78526" required>
+    <div id="game-id-field" hidden>
+      <label for="raw-game-id">对局 ID 或对局数据页网址</label>
+      <input id="raw-game-id" type="text">
+    </div>
+    <label for="payload">图寻数据或复盘备份</label>
+    <textarea id="payload" rows="4" required></textarea>
+    <div class="tools"><button class="primary" type="submit">读取数据</button><button type="button" id="close">关闭</button></div>
+    <p id="import-status" role="status"></p>
+    <div id="history-list"></div>
+  </form>
+</dialog>
+<dialog id="confirm-delete"><form method="dialog"><h2>删除这局？</h2><p>从这张地图移除该局的所有猜测。</p><div class="tools"><button value="cancel">取消</button><button value="delete" class="primary">删除</button></div></form></dialog>
+</body>
+</html>

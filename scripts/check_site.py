@@ -4,7 +4,7 @@ from urllib.parse import urlsplit, unquote
 import re
 
 root=Path('.').resolve()
-pages=[Path('index.html'),Path('canada/index.html'),Path('china/index.html'),Path('review/index.html'),Path('designs/china-area-codes/index.html')]
+pages=[Path('index.html'),Path('canada/index.html'),Path('china/index.html'),Path('review/index.html'),Path('guess-map/index.html'),Path('designs/china-area-codes/index.html')]
 errors=[];assets=set();links=0
 class Inspect(HTMLParser):
     def __init__(self,page):super().__init__();self.page=page;self.ids=set();self.h1=0

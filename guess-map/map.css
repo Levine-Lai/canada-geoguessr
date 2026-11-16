@@ -5,7 +5,7 @@ body { font:16px/1.5 var(--font); background:var(--base); color:var(--ink); }
 header { min-height:66px; padding:10px 22px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
 h1,h2 { font-size:22px; margin:0; }
 button,input,select,textarea { font:inherit; }
-button,select,textarea,input[type=text] { color:inherit; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:7px 11px; }
+button,select,textarea,input[type=text],input[type=number] { color:inherit; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:7px 11px; }
 button { cursor:pointer; white-space:nowrap; }
 .primary { background:var(--accent); color:var(--base); border-color:var(--accent); font-weight:650; }
 .tools { display:flex; gap:8px; flex-wrap:wrap; }
@@ -13,6 +13,13 @@ main { display:grid; grid-template-columns:minmax(0,1fr) 300px; height:calc(100d
 #map { background:var(--water); z-index:0; color:var(--base); min-width:0; }
 aside { background:var(--surface); padding:16px; overflow:auto; }
 aside select { display:block; width:100%; margin:5px 0 12px; }
+.distance-filter { min-width:0; border:0; margin:0 0 12px; padding:0; }
+.distance-filter legend { padding:0; margin-bottom:5px; }
+.distance-filter div { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:6px; align-items:center; }
+.distance-filter select { margin:0; }
+.distance-filter input { width:100%; min-width:0; }
+.distance-filter span,.distance-filter p { color:var(--muted); font-size:14px; }
+.distance-filter p { margin:4px 0 0; }
 .summary,.round { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .toggle { display:block; color:var(--muted); margin:10px 0; font-size:14px; }
 .toggle input { accent-color:var(--accent); }

@@ -17,6 +17,7 @@ let database, rows = [];
 let history = new Map();
 const checked = new Set();
 let focusedId = null;
+let distanceLimit = $("distance-km").valueAsNumber;
 let pending = [];
 let deleting = [];
 
@@ -61,8 +62,15 @@ async function fallback() {
   }
 }
 
-function visibleRows() {
+function gameRows() {
   return rows.filter((row) => !$("games").value || gameKey(row) === $("games").value);
+}
+
+function visibleRows() {
+  const operator = $("distance-operator").value;
+  const candidates = gameRows();
+  if (!operator) return candidates;
+  return candidates.filter((row) => operator === "gt" ? row.distanceKm > distanceLimit : row.distanceKm < distanceLimit);
 }
 
 function fit() {
@@ -80,7 +88,7 @@ function drawMap() {
   pins.clearLayers();
   answers.clearLayers();
   for (const row of visible.filter((row) => !focusedId || row.id === focusedId)) {
-    const distance = data.formatDistance(data.distance(row.truth,row.guess));
+    const distance = data.formatDistance(row.distanceKm);
     const label = "第 " + row.round + " 轮 · " + distance;
     const openReplay = () => window.open(replay(row), "_blank", "noopener,noreferrer");
     L.marker(row.guess, {
@@ -119,11 +127,12 @@ function redraw() {
   $("count").textContent = visible.length + " 个猜测";
   $("remove").hidden = !$("games").value;
   $("empty").hidden = visible.length > 0;
+  $("empty").textContent = rows.length ? "没有符合筛选条件的回合。" : "导入历史对局，在同一张地图查看你的猜测。";
   $("rounds").replaceChildren();
   for (const row of visible) {
     const line = document.createElement("div");
     line.className = "round";
-    const focus = button("第 " + row.round + " 轮 · " + data.formatDistance(data.distance(row.truth,row.guess)), () => {
+    const focus = button("第 " + row.round + " 轮 · " + data.formatDistance(row.distanceKm), () => {
       focusedId = focusedId === row.id ? null : row.id;
       for (const control of $("rounds").querySelectorAll(".round-focus")) {
         control.setAttribute("aria-pressed", String(control === focus && !!focusedId));
@@ -146,6 +155,7 @@ function redraw() {
 
 async function refresh() {
   rows = (await data.readDatabase(database)).rounds.sort((a,b) => b.playedAt - a.playedAt || a.round - b.round);
+  for (const row of rows) row.distanceKm = data.distance(row.truth,row.guess);
   const selection = $("games").value;
   $("games").length = 1;
   const byGame = new Map(rows.map((row) => [gameKey(row),row]));
@@ -221,7 +231,17 @@ $("close").onclick = () => $("importer").close();
 $("fit").onclick = () => { focusedId = null; $("games").value = ""; redraw(); fit(); };
 $("answers").onchange = drawMap;
 $("games").onchange = () => { redraw(); fit(); };
-$("remove").onclick = () => confirmRemoval(visibleRows(), "移除这局的所有回合？");
+$("distance-operator").onchange = () => { redraw(); fit(); };
+$("distance-km").oninput = () => {
+  const field = $("distance-km");
+  const valid = field.validity.valid && Number.isSafeInteger(field.valueAsNumber);
+  $("distance-error").hidden = valid;
+  field.setAttribute("aria-invalid", String(!valid));
+  if (!valid) return;
+  distanceLimit = field.valueAsNumber;
+  if ($("distance-operator").value) { redraw(); fit(); }
+};
+$("remove").onclick = () => confirmRemoval(gameRows(), "移除这局的所有回合？");
 
 function confirmRemoval(entries, title) {
   if (!entries.length) return;

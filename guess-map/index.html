@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>图寻落点地图</title>
 <link rel="stylesheet" href="../review/vendor/leaflet.css">
-<link rel="stylesheet" href="map.css">
+<link rel="stylesheet" href="map.css?v=distance-filter">
 <script defer src="../review/vendor/leaflet.js"></script>
 <script defer src="../review/data.js"></script>
-<script defer src="app.js"></script>
+<script defer src="app.js?v=distance-filter"></script>
 </head>
 <body>
 <header>
@@ -20,6 +20,19 @@
   <aside aria-label="对局和回合">
     <label for="games">对局</label>
     <select id="games"><option value="">全部对局</option></select>
+    <fieldset class="distance-filter">
+      <legend>误差距离</legend>
+      <div>
+        <select id="distance-operator" aria-label="距离范围">
+          <option value="">不限</option>
+          <option value="gt">大于</option>
+          <option value="lt">小于</option>
+        </select>
+        <input id="distance-km" type="number" min="0" step="1" value="300" required aria-label="距离阈值（公里）" aria-describedby="distance-error">
+        <span aria-hidden="true">km</span>
+      </div>
+      <p id="distance-error" role="status" hidden>请输入非负整数公里数。</p>
+    </fieldset>
     <div class="summary"><strong id="count">0 个猜测</strong><button id="remove" hidden>删除这局</button></div>
     <label class="toggle"><input id="answers" type="checkbox" checked> 显示答案与误差线</label>
     <div id="rounds"></div>

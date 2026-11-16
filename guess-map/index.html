@@ -44,9 +44,24 @@
     <textarea id="payload" rows="4" required></textarea>
     <div class="tools"><button class="primary" type="submit">读取数据</button><button type="button" id="close">关闭</button></div>
     <p id="import-status" role="status"></p>
+    <section id="history-tools" hidden aria-label="历史对局操作">
+      <div class="tools">
+        <button type="button" id="select-all">全选</button>
+        <button type="button" id="clear-selection">清除勾选</button>
+        <button type="button" id="import-selected">导入所选</button>
+        <button type="button" id="remove-selected">移除所选</button>
+      </div>
+      <div id="pending-import" hidden>
+        <p id="pending-status" role="status"></p>
+        <a id="pending-source" target="_blank" rel="noreferrer">打开当前对局数据 ↗</a>
+        <label for="pending-payload">粘贴当前对局数据</label>
+        <textarea id="pending-payload" rows="3"></textarea>
+        <button type="button" id="save-pending">导入这局</button>
+      </div>
+    </section>
     <div id="history-list"></div>
   </form>
 </dialog>
-<dialog id="confirm-delete"><form method="dialog"><h2>删除这局？</h2><p>从这张地图移除该局的所有猜测。</p><div class="tools"><button value="cancel">取消</button><button value="delete" class="primary">删除</button></div></form></dialog>
+<dialog id="confirm-delete"><form method="dialog"><h2 id="delete-title">移除记录？</h2><div class="tools"><button value="cancel">取消</button><button value="delete" class="primary">移除</button></div></form></dialog>
 </body>
 </html>

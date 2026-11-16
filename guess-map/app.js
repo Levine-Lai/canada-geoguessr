@@ -15,6 +15,10 @@ const pins = L.layerGroup().addTo(map);
 const answers = L.layerGroup().addTo(map);
 let database, rows = [];
 let history = new Map();
+const checked = new Set();
+let focusedId = null;
+let pending = [];
+let deleting = [];
 
 function outside(label, url) {
   const link = document.createElement("a");
@@ -71,31 +75,73 @@ function replay(row) {
   return origin + "/replay-pano?" + new URLSearchParams({ gameId:row.gameId, round:row.round });
 }
 
-function redraw() {
+function drawMap() {
   const visible = visibleRows();
-  $("count").textContent = visible.length + " 个猜测";
-  $("remove").hidden = !$("games").value;
-  $("empty").hidden = visible.length > 0;
-  $("rounds").replaceChildren();
   pins.clearLayers();
   answers.clearLayers();
-  for (const row of visible) {
+  for (const row of visible.filter((row) => !focusedId || row.id === focusedId)) {
     const distance = data.formatDistance(data.distance(row.truth,row.guess));
     const label = "第 " + row.round + " 轮 · " + distance;
-    const link = outside(label, replay(row));
-    link.className = "round";
-    link.title = "在图寻打开该回合街景";
-    $("rounds").append(link);
     const openReplay = () => window.open(replay(row), "_blank", "noopener,noreferrer");
     L.marker(row.guess, {
       title:label + " · 打开原始街景", icon:L.divIcon({ className:"pin", html:String(row.round), iconSize:[24,24], iconAnchor:[12,12] })
     }).bindTooltip(label).on("click", openReplay).addTo(pins);
-    if (!$("answers").checked) continue;
-    L.circleMarker(row.truth, { radius:5, color:"#fff", weight:2, fillColor:"#23a276", fillOpacity:1 })
+    if (!focusedId && !$("answers").checked) continue;
+    const lng = row.truth[1] - 360 * Math.round((row.truth[1] - row.guess[1]) / 360);
+    const target = [row.truth[0],lng];
+    L.circleMarker(target, { radius:5, color:"#fff", weight:2, fillColor:"#23a276", fillOpacity:1 })
       .bindPopup(outside("真实位置 · 打开原始街景 ↗", replay(row))).addTo(answers);
-    const lng = row.guess[1] - 360 * Math.round((row.guess[1] - row.truth[1]) / 360);
-    L.polyline([row.truth, [row.guess[0],lng]], { color:"#bd5f18", weight:1.5, interactive:false }).addTo(answers);
+    L.polyline([row.guess,target], { color:"#bd5f18", weight:focusedId ? 3 : 2, interactive:false }).addTo(answers);
+    const vector = map.project(target,0).subtract(map.project(row.guess,0));
+    if (vector.x || vector.y) {
+      const tip = document.createElement("div");
+      tip.className = "arrow-tip";
+      tip.style.setProperty("--angle", Math.atan2(vector.y,vector.x) + "rad");
+      L.marker(target, {
+        interactive:false, keyboard:false,
+        icon:L.divIcon({className:"arrow-icon",html:tip,iconSize:[12,12],iconAnchor:[12,6]})
+      }).addTo(answers);
+    }
   }
+}
+
+function button(label, action) {
+  const control = document.createElement("button");
+  control.type = "button";
+  control.textContent = label;
+  control.onclick = action;
+  return control;
+}
+
+function redraw() {
+  const visible = visibleRows();
+  if (!visible.some((row) => row.id === focusedId)) focusedId = null;
+  $("count").textContent = visible.length + " 个猜测";
+  $("remove").hidden = !$("games").value;
+  $("empty").hidden = visible.length > 0;
+  $("rounds").replaceChildren();
+  for (const row of visible) {
+    const line = document.createElement("div");
+    line.className = "round";
+    const focus = button("第 " + row.round + " 轮 · " + data.formatDistance(data.distance(row.truth,row.guess)), () => {
+      focusedId = focusedId === row.id ? null : row.id;
+      for (const control of $("rounds").querySelectorAll(".round-focus")) {
+        control.setAttribute("aria-pressed", String(control === focus && !!focusedId));
+      }
+      drawMap();
+      if (focusedId) {
+        const shift = 360 * Math.round((row.truth[1] - row.guess[1]) / 360);
+        map.fitBounds([row.guess,[row.truth[0],row.truth[1]-shift]], {padding:[42,42],maxZoom:15});
+      } else fit();
+    });
+    focus.className = "round-focus";
+    focus.setAttribute("aria-pressed", String(row.id === focusedId));
+    const remove = button("移除", () => confirmRemoval([row], "移除这一轮？"));
+    remove.className = "round-remove";
+    line.append(focus, outside("街景 ↗", replay(row)), remove);
+    $("rounds").append(line);
+  }
+  drawMap();
 }
 
 async function refresh() {
@@ -114,18 +160,44 @@ async function refresh() {
 
 function renderHistory() {
   $("history-list").replaceChildren();
-  const known = new Set(rows.map((row) => row.gameId));
+  $("history-tools").hidden = !history.size;
+  const known = new Set(rows.map(gameKey));
   for (const item of history.values()) {
+    const row = document.createElement("div");
+    row.className = "history-row";
+    const labelControl = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = checked.has(item.gameId);
+    checkbox.onchange = () => {
+      if (checkbox.checked) checked.add(item.gameId);
+      else checked.delete(item.gameId);
+      updateHistoryButtons();
+    };
     const label = [item.gmtCreate ? date.format(item.gmtCreate) : item.gameId,
-      item.mapsName || typeName[item.type] || item.type || "对局", known.has(item.gameId) ? "已导入" : ""].filter(Boolean).join(" · ");
-    $("history-list").append(outside(label, api + "solo/get?" + new URLSearchParams({gameId:item.gameId})));
+      item.mapsName || typeName[item.type] || item.type || "对局",
+      known.has(gameKey(item)) ? "已导入" : ""].filter(Boolean).join(" · ");
+    labelControl.append(checkbox,document.createTextNode(label));
+    row.append(labelControl,outside("数据 ↗", gameDataUrl(item.gameId)));
+    $("history-list").append(row);
   }
+  updateHistoryButtons();
 }
 
-function convert(game, userId) {
+const gameDataUrl = (id) => api + "solo/get?" + new URLSearchParams({gameId:id});
+const checkedRows = () => rows.filter((row) => checked.has(row.gameId) && String(history.get(row.gameId)?.userId) === row.userId);
+
+function updateHistoryButtons() {
+  $("clear-selection").disabled = !checked.size;
+  $("import-selected").disabled = !checked.size;
+  $("remove-selected").disabled = !checkedRows().length;
+}
+
+function convert(game, userId, expectedId) {
   if (!Array.isArray(game?.rounds)) throw new Error("未找到对局回合。");
   if (game.status !== "finish") throw new Error("请选择一局已结束的对局。");
-  const id = game.gameId ?? game.id ?? $("raw-game-id").value.trim();
+  const id = game.gameId ?? game.id ?? expectedId ?? $("raw-game-id").value.trim();
+  if (expectedId && String(id) !== expectedId) throw new Error("粘贴的数据与当前所选对局不匹配。");
   const players = (Array.isArray(game.teams) ? game.teams : []).flatMap((team) => team.teamUsers || []);
   if (game.player) players.push(game.player);
   const player = players.find((item) => String(item.user?.userId) === userId);
@@ -146,26 +218,34 @@ function convert(game, userId) {
 $("history").href = api + "history/listSelfAll";
 $("import").onclick = () => $("importer").showModal();
 $("close").onclick = () => $("importer").close();
-$("fit").onclick = fit;
-$("answers").onchange = redraw;
+$("fit").onclick = () => { focusedId = null; $("games").value = ""; redraw(); fit(); };
+$("answers").onchange = drawMap;
 $("games").onchange = () => { redraw(); fit(); };
-$("remove").onclick = () => {
+$("remove").onclick = () => confirmRemoval(visibleRows(), "移除这局的所有回合？");
+
+function confirmRemoval(entries, title) {
+  if (!entries.length) return;
+  deleting = entries.map((row) => row.id);
+  $("delete-title").textContent = title;
   $("confirm-delete").returnValue = "";
   $("confirm-delete").showModal();
-};
+}
+
 $("confirm-delete").onclose = async () => {
+  const ids = deleting;
+  deleting = [];
   if ($("confirm-delete").returnValue !== "delete") return;
   try {
     await new Promise((resolve, reject) => {
       const transaction = database.transaction("rounds", "readwrite");
       const store = transaction.objectStore("rounds");
-      for (const row of visibleRows()) store.delete(row.id);
+      for (const id of ids) store.delete(id);
       transaction.oncomplete = resolve;
       transaction.onabort = () => reject(transaction.error);
     });
     await refresh();
     renderHistory();
-    summary("已删除所选对局。");
+    summary("已移除 " + ids.length + " 个猜测。");
   } catch { summary("删除失败，请重试。"); }
 };
 
@@ -173,6 +253,65 @@ const ready = data.openDatabase().then((db) => {
   database = db;
   return refresh();
 }).catch(() => summary("无法打开当前浏览器的记录库。"));
+
+$("select-all").onclick = () => {
+  for (const id of history.keys()) checked.add(id);
+  renderHistory();
+};
+$("clear-selection").onclick = () => {
+  checked.clear();
+  pending = [];
+  $("pending-payload").value = "";
+  renderPending();
+  renderHistory();
+};
+$("remove-selected").onclick = () => confirmRemoval(checkedRows(), "移除所选对局的所有回合？");
+
+function renderPending() {
+  const item = pending[0];
+  $("pending-import").hidden = !item;
+  if (!item) return;
+  $("pending-source").href = gameDataUrl(item.gameId);
+  const when = item.gmtCreate ? date.format(item.gmtCreate) : item.gameId;
+  $("pending-status").textContent = when + " · 还有 " + pending.length + " 局待导入";
+}
+
+async function saveImported(entries, userId) {
+  const imported = data.parseBackup(entries).rounds.filter((row) => row.userId === userId);
+  if (!imported.length) throw new Error("没有找到有效的本人猜测坐标。");
+  const added = await data.saveRounds(database,imported);
+  await refresh();
+  renderHistory();
+  const message = "已读取 " + imported.length + " 个猜测，新增 " + added + " 个。";
+  $("import-status").textContent = message;
+  summary(message);
+}
+
+$("import-selected").onclick = () => {
+  pending = [...checked].map((id) => history.get(id)).filter(Boolean);
+  $("pending-payload").value = "";
+  renderPending();
+};
+
+$("save-pending").onclick = async () => {
+  const item = pending[0];
+  if (!item) return;
+  const control = $("save-pending");
+  control.disabled = true;
+  try {
+    await ready;
+    if (!database) throw new Error("无法打开当前浏览器的记录库。");
+    const payload = JSON.parse($("pending-payload").value);
+    if (payload.success === false) throw new Error("请在登录图寻后重新打开该数据页。");
+    const userId = String(item.userId);
+    await saveImported(data.backup(convert(payload.data ?? payload, userId, item.gameId)), userId);
+    if (pending[0] === item) pending.shift();
+    $("pending-payload").value = "";
+    renderPending();
+  } catch (error) {
+    $("pending-status").textContent = error instanceof SyntaxError ? "请粘贴当前对局的完整数据。" : error.message;
+  } finally { control.disabled = false; }
+};
 
 $("import-form").onsubmit = async (event) => {
   event.preventDefault();
@@ -187,6 +326,9 @@ $("import-form").onsubmit = async (event) => {
       const items = payload.data.filter((item) =>
         item?.gmtEnd && gameId(item.gameId) && String(item.userId) === userId);
       history = new Map(items.map((item) => [item.gameId,item]));
+      checked.clear();
+      pending = [];
+      renderPending();
       renderHistory();
       status.textContent = items.length ? "已载入 " + history.size + " 局历史，选择一局读取其落点。"
         : "没有找到该用户已结束的对局。请登录图寻并核对用户 ID。";
@@ -198,13 +340,7 @@ $("import-form").onsubmit = async (event) => {
         if (value.startsWith(origin + "/")) $("raw-game-id").value = new URL(value).searchParams.get("gameId") || "";
       }
       const backup = payload.format === "tuxun-review" ? payload : data.backup(convert(content,userId));
-      const imported = data.parseBackup(backup).rounds.filter((row) => row.userId === userId);
-      if (!imported.length) throw new Error("没有找到有效的本人猜测坐标。");
-      const added = await data.saveRounds(database,imported);
-      await refresh();
-      renderHistory();
-      status.textContent = "已读取 " + imported.length + " 个猜测，新增 " + added + " 个。";
-      summary(status.textContent);
+      await saveImported(backup,userId);
       $("raw-game-id").value = "";
       $("game-id-field").hidden = true;
     }

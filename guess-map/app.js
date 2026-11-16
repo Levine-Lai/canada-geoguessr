@@ -92,7 +92,8 @@ $("guess-street").addEventListener("close", () => streetLookup?.abort());
 
 async function openGuessStreetView(guess) {
   let nearest;
-  let distance = 0.25;
+  const { radiusKm } = window.GuessStreet;
+  let distance = radiusKm;
   for (const row of rows) {
     if (!row.panoId) continue;
     const candidate = data.distance(guess, row.truth);
@@ -110,7 +111,7 @@ async function openGuessStreetView(guess) {
     streetLookup = new AbortController();
     const {signal} = streetLookup;
     results.replaceChildren();
-    status.textContent = "正在查找 250 米内的百度和腾讯街景…";
+    status.textContent = "正在查找 " + radiusKm + " 公里内的百度和腾讯街景…";
     dialog.showModal();
     const matches = await window.GuessStreet.search(guess, AbortSignal.any([signal,AbortSignal.timeout(6500)]));
     if (signal.aborted) return;

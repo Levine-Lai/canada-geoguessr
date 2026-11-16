@@ -1,5 +1,8 @@
 "use strict";
 
+const streetRadiusKm = 10;
+const streetRadiusMeters = streetRadiusKm * 1000;
+
 // Provider lookups use different coordinate systems. Map markers stay in WGS84.
 function toGcj02([lat, lng]) {
   const x = lng - 105;
@@ -48,7 +51,7 @@ async function panoramaData(base, params, signal) {
 
 async function baiduPanorama(gcj, signal) {
   const [x,y] = toBaiduMeters(gcj);
-  const response = await panoramaData("https://mapsv0.bdimg.com/", {qt:"qsdata",x,y,radius:250}, signal);
+  const response = await panoramaData("https://mapsv0.bdimg.com/", {qt:"qsdata",x,y,radius:streetRadiusMeters}, signal);
   const pano = response.content;
   if (!pano || !/^[\w-]+$/.test(pano.id ?? "")) return null;
   const params = new URLSearchParams({panoid:pano.id,panotype:"street",newmap:"1",shareurl:"1",pid:pano.id});
@@ -56,7 +59,7 @@ async function baiduPanorama(gcj, signal) {
 }
 
 async function tencentPanorama([lat,lng], signal) {
-  const response = await panoramaData("https://sv.map.qq.com/xf", {lat,lng,r:250,output:"json"}, signal);
+  const response = await panoramaData("https://sv.map.qq.com/xf", {lat,lng,r:streetRadiusMeters,output:"json"}, signal);
   const id = response.detail?.svid;
   if (typeof id !== "string" || !/^\d+$/.test(id)) return null;
   const params = new URLSearchParams({x:0,y:0,from:"html5",level:0,svid:id});
@@ -64,6 +67,7 @@ async function tencentPanorama([lat,lng], signal) {
 }
 
 window.GuessStreet = {
+  radiusKm: streetRadiusKm,
   search: (point, signal) => {
     const gcj = toGcj02(point);
     return Promise.allSettled([baiduPanorama(gcj,signal), tencentPanorama(gcj,signal)]);

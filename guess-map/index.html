@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>图寻落点地图</title>
 <link rel="stylesheet" href="../review/vendor/leaflet.css">
-<link rel="stylesheet" href="map.css?v=distance-filter">
+<link rel="stylesheet" href="map.css?v=street-points">
 <script defer src="../review/vendor/leaflet.js"></script>
 <script defer src="../review/data.js"></script>
-<script defer src="app.js?v=distance-filter"></script>
+<script defer src="street.js?v=1"></script>
+<script defer src="app.js?v=street-points"></script>
 </head>
 <body>
 <header>
@@ -76,5 +77,10 @@
   </form>
 </dialog>
 <dialog id="confirm-delete"><form method="dialog"><h2 id="delete-title">移除记录？</h2><div class="tools"><button value="cancel">取消</button><button value="delete" class="primary">移除</button></div></form></dialog>
+<dialog id="guess-street" aria-labelledby="guess-street-title">
+  <form method="dialog" class="summary"><h2 id="guess-street-title">猜测点附近街景</h2><button>关闭</button></form>
+  <p id="street-status" role="status"></p>
+  <div id="street-results"></div>
+</dialog>
 </body>
 </html>

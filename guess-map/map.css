@@ -35,6 +35,9 @@ dialog label { display:block; margin-top:9px; }
 textarea { display:block; width:100%; margin:4px 0 12px; }
 #history-list a,#history-list span { display:block; padding:5px 0; }
 .pin { border-radius:50%; border:2px solid white; color:var(--base); background:var(--accent); text-align:center; font:bold 12px/20px var(--font); }
+.truth-pin { border-radius:50%; border:2px solid white; background:var(--truth); }
+#street-results { display:grid; gap:10px; }
+#street-results img { display:block; width:100%; max-width:512px; margin-top:6px; height:auto; }
 @media(max-width:650px) { header { padding:9px 10px; } h1 { font-size:19px; } main { display:block; height:auto; } #map { height:62dvh; } aside { max-height:48dvh; } }
 
 .history-row,.round { display:flex; justify-content:space-between; align-items:center; gap:8px; }

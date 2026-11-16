@@ -83,6 +83,68 @@ function replay(row) {
   return origin + "/replay-pano?" + new URLSearchParams({ gameId:row.gameId, round:row.round });
 }
 
+function openStreetView(url) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+let streetLookup;
+$("guess-street").addEventListener("close", () => streetLookup?.abort());
+
+async function openGuessStreetView(guess) {
+  let nearest;
+  let distance = 0.25;
+  for (const row of rows) {
+    if (!row.panoId) continue;
+    const candidate = data.distance(guess, row.truth);
+    if (candidate > distance) continue;
+    nearest = row;
+    distance = candidate;
+  }
+
+  const google = "https://www.google.com/maps/@?" + new URLSearchParams({api:"1", map_action:"pano", viewpoint:guess.join(",")});
+  if (window.GuessStreet.inChinaArea(guess)) {
+    const dialog = $("guess-street");
+    const status = $("street-status");
+    const results = $("street-results");
+    streetLookup?.abort();
+    streetLookup = new AbortController();
+    const {signal} = streetLookup;
+    results.replaceChildren();
+    status.textContent = "正在查找 250 米内的百度和腾讯街景…";
+    dialog.showModal();
+    const matches = await window.GuessStreet.search(guess, AbortSignal.any([signal,AbortSignal.timeout(6500)]));
+    if (signal.aborted) return;
+    const found = matches.flatMap((result) => result.status === "fulfilled" && result.value ? [result.value] : []);
+    for (const match of found) {
+      const link = outside(match.label,match.url);
+      if (match.preview) {
+        const image = document.createElement("img");
+        image.alt = "腾讯街景全景预览";
+        image.src = match.url;
+        image.referrerPolicy = "no-referrer";
+        link.append(image);
+      }
+      results.append(link);
+    }
+    if (nearest) results.append(outside("图寻附近街景 · " + data.formatDistance(distance) + " ↗", replay(nearest)));
+    status.textContent = matches.map((result,index) => {
+      const name = index === 0 ? "百度" : "腾讯";
+      if (result.status === "rejected") return name + "暂不可用";
+      return name + (result.value ? "找到街景" : "未找到街景");
+    }).join(" · ");
+    return;
+  }
+
+  if (nearest) {
+    openStreetView(replay(nearest));
+    summary("已打开距猜测点 " + data.formatDistance(distance) + " 的已导入街景。");
+    return;
+  }
+
+  openStreetView(google);
+  summary("已用猜测点坐标打开 Google 街景。影像取决于当地覆盖。");
+}
+
 function drawMap() {
   const visible = visibleRows();
   pins.clearLayers();
@@ -90,15 +152,18 @@ function drawMap() {
   for (const row of visible.filter((row) => !focusedId || row.id === focusedId)) {
     const distance = data.formatDistance(row.distanceKm);
     const label = "第 " + row.round + " 轮 · " + distance;
-    const openReplay = () => window.open(replay(row), "_blank", "noopener,noreferrer");
     L.marker(row.guess, {
-      title:label + " · 打开原始街景", icon:L.divIcon({ className:"pin", html:String(row.round), iconSize:[24,24], iconAnchor:[12,12] })
-    }).bindTooltip(label).on("click", openReplay).addTo(pins);
+      title:label + " · 查找猜测点附近街景",
+      icon:L.divIcon({ className:"pin", html:String(row.round), iconSize:[24,24], iconAnchor:[12,12] })
+    }).bindTooltip("猜测点 · " + label).on("click", () => openGuessStreetView(row.guess)).addTo(pins);
     if (!focusedId && !$("answers").checked) continue;
     const lng = row.truth[1] - 360 * Math.round((row.truth[1] - row.guess[1]) / 360);
     const target = [row.truth[0],lng];
-    L.circleMarker(target, { radius:5, color:"#fff", weight:2, fillColor:"#23a276", fillOpacity:1 })
-      .bindPopup(outside("真实位置 · 打开原始街景 ↗", replay(row))).addTo(answers);
+    L.marker(target, {
+      title:"真实位置 · 打开原始街景",
+      zIndexOffset:10000,
+      icon:L.divIcon({className:"truth-pin",iconSize:[12,12],iconAnchor:[6,6]})
+    }).bindTooltip("真实位置 · " + label).on("click", () => openStreetView(replay(row))).addTo(answers);
     L.polyline([row.guess,target], { color:"#bd5f18", weight:focusedId ? 3 : 2, interactive:false }).addTo(answers);
     const vector = map.project(target,0).subtract(map.project(row.guess,0));
     if (vector.x || vector.y) {
@@ -147,7 +212,9 @@ function redraw() {
     focus.setAttribute("aria-pressed", String(row.id === focusedId));
     const remove = button("移除", () => confirmRemoval([row], "移除这一轮？"));
     remove.className = "round-remove";
-    line.append(focus, outside("街景 ↗", replay(row)), remove);
+    const street = outside("街景 ↗", replay(row));
+    street.title = "打开真实位置的原始街景";
+    line.append(focus, street, remove);
     $("rounds").append(line);
   }
   drawMap();
